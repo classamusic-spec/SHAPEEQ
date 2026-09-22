@@ -1,0 +1,528 @@
+<style>
+/* ============================================================
+   SHAPE — Row 1 (band strip) + Row 2 (bottom bar)
+   All selectors namespaced with .sh-
+   ============================================================ */
+
+.sh-bandstrip,
+.sh-bottombar{
+  --chassis-hi:#F2F4F6;
+  --chassis:#D4D8DD;
+  --chassis-lo:#AEB4BB;
+  --panel-hi:#E2E5E9;
+  --panel:#D0D5DA;
+  --panel-lo:#BCC2C9;
+  --ink:#262B33;
+  --ink2:#5B636D;
+  --ink3:#878F99;
+  --amber:#FF9E2C;
+  --cyan:#45C2F0;
+  --violet:#9B7BF0;
+
+  --sh-knob-w:56px;
+  --sh-knob-h:76px;
+  --sh-knob-w-lg:74px;
+  --sh-knob-h-lg:96px;
+
+  font-family:Inter, system-ui, sans-serif;
+  -webkit-font-smoothing:antialiased;
+  max-width:100%;
+}
+
+.sh-bandstrip,
+.sh-bandstrip *,
+.sh-bottombar,
+.sh-bottombar *{ box-sizing:border-box; }
+
+
+/* ------------------------------------------------------------
+   Shared: milled groove divider
+   ------------------------------------------------------------ */
+.sh-divider{
+  flex:0 0 1px;
+  width:1px;
+  align-self:stretch;
+  position:relative;
+  margin:0 18px;
+  background:linear-gradient(180deg,transparent,rgba(0,0,0,.18),transparent);
+}
+.sh-divider::after{
+  content:"";
+  position:absolute;
+  top:0; left:1px;
+  width:1px; height:100%;
+  background:linear-gradient(180deg,transparent,rgba(255,255,255,.6),transparent);
+}
+.sh-divider--bar{
+  margin:0 26px;
+  min-height:72px;
+}
+
+
+/* ------------------------------------------------------------
+   Shared: mount-point reservations (filled by other components)
+   ------------------------------------------------------------ */
+.sh-knobmount{
+  flex:0 0 auto;
+  width:var(--sh-knob-w);
+  min-height:var(--sh-knob-h);
+}
+.sh-knobmount[data-size="lg"]{
+  width:var(--sh-knob-w-lg);
+  min-height:var(--sh-knob-h-lg);
+}
+.sh-bandstrip .sh-shapebtns{ min-height:30px; min-width:0; }
+.sh-pillmount{ min-height:26px; min-width:96px; }
+.sh-segmount{ min-height:30px; min-width:148px; max-width:100%; }
+
+
+/* ============================================================
+   ROW 1 — THE BAND STRIP
+   ============================================================ */
+.sh-bandstrip{
+  display:flex;
+  align-items:stretch;
+  column-gap:0;
+  row-gap:14px;
+  padding:16px 20px;
+  border-radius:10px;
+  background:linear-gradient(180deg,var(--panel-hi),var(--panel));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.85),
+    inset 0 -1px 0 rgba(0,0,0,.06),
+    0 1px 2px rgba(0,0,0,.10),
+    0 4px 10px rgba(0,0,0,.09);
+}
+
+/* (a) band identity column ---------------------------------- */
+.sh-bandid{
+  flex:0 0 150px;
+  width:150px;
+  min-width:0;
+  margin-right:18px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.sh-bandid-top{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+}
+
+.sh-dot{
+  flex:0 0 auto;
+  width:7px; height:7px;
+  border-radius:50%;
+  background:var(--amber);
+  box-shadow:
+    0 0 5px rgba(255,158,44,.95),
+    0 0 12px rgba(255,158,44,.45);
+}
+
+.sh-bandlabel{
+  min-width:0;
+  font-size:12px;
+  font-weight:500;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:var(--ink);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.sh-chevrons{
+  margin-left:auto;
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  gap:2px;
+}
+.sh-chev{
+  appearance:none;
+  -webkit-appearance:none;
+  border:0;
+  padding:0;
+  background:none;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:22px; height:22px;
+  color:var(--ink3);
+  border-radius:5px;
+  transition:color .12s ease, background-color .12s ease;
+}
+.sh-chev:hover{ color:var(--ink); background:rgba(255,255,255,.5); }
+.sh-chev:active{ background:rgba(0,0,0,.05); }
+.sh-chev svg{ display:block; width:22px; height:22px; }
+
+/* select --------------------------------------------------- */
+.sh-select{
+  appearance:none;
+  -webkit-appearance:none;
+  -moz-appearance:none;
+  width:100%;
+  min-width:0;
+  height:34px;
+  padding:0 30px 0 12px;
+  border-radius:7px;
+  border:1px solid rgba(0,0,0,.16);
+  font-family:inherit;
+  font-size:12px;
+  font-weight:500;
+  color:var(--ink);
+  cursor:pointer;
+  outline:none;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.85),
+    0 1px 1px rgba(0,0,0,.06);
+  background-image:
+    linear-gradient(45deg,transparent 50%,var(--ink2) 50%),
+    linear-gradient(135deg,var(--ink2) 50%,transparent 50%),
+    linear-gradient(180deg,var(--panel-hi),var(--panel));
+  background-position:
+    calc(100% - 18px) calc(50% - 1px),
+    calc(100% - 13px) calc(50% - 1px),
+    0 0;
+  background-size:5px 5px, 5px 5px, 100% 100%;
+  background-repeat:no-repeat, no-repeat, no-repeat;
+  transition:border-color .12s ease, box-shadow .12s ease;
+}
+.sh-select:hover{ border-color:rgba(0,0,0,.24); }
+.sh-select:focus-visible{
+  border-color:rgba(255,158,44,.75);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.85),
+    0 0 0 2px rgba(255,158,44,.28);
+}
+
+/* (b) core knob group --------------------------------------- */
+.sh-knobgroup{
+  flex:0 0 auto;
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+}
+
+/* (d) dynamic group ----------------------------------------- */
+.sh-dyngroup{
+  flex:0 1 auto;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:12px;
+}
+.sh-dynknobs{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+}
+
+/* (e) right-hand button column ------------------------------ */
+.sh-btncol{
+  margin-left:auto;
+  flex:0 0 auto;
+  width:62px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:9px;
+}
+
+.sh-minibtn{
+  appearance:none;
+  -webkit-appearance:none;
+  width:100%;
+  height:34px;
+  padding:0;
+  border-radius:8px;
+  border:1px solid rgba(0,0,0,.16);
+  background:linear-gradient(180deg,var(--panel-hi),var(--panel));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.85),
+    0 1px 2px rgba(0,0,0,.10);
+  font-family:inherit;
+  font-size:10px;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  color:var(--ink2);
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:color .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
+}
+.sh-minibtn:hover{ color:var(--ink); border-color:rgba(0,0,0,.22); }
+.sh-minibtn:active{
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.16);
+  background:linear-gradient(180deg,var(--panel),var(--panel-lo));
+}
+.sh-minibtn.is-on{
+  background:linear-gradient(180deg,#333A44,#1E232B);
+  border-color:rgba(0,0,0,.55);
+  color:var(--amber);
+  text-shadow:0 0 8px rgba(255,158,44,.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    inset 0 0 0 1px rgba(255,158,44,.42),
+    0 0 10px rgba(255,158,44,.38),
+    0 1px 2px rgba(0,0,0,.28);
+}
+
+.sh-powerbtn{
+  appearance:none;
+  -webkit-appearance:none;
+  flex:0 0 auto;
+  width:38px; height:38px;
+  padding:0;
+  border-radius:50%;
+  border:1px solid rgba(0,0,0,.16);
+  background:linear-gradient(180deg,var(--panel-hi),var(--panel));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.85),
+    0 1px 2px rgba(0,0,0,.10);
+  color:var(--ink2);
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:color .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
+}
+.sh-powerbtn:hover{ color:var(--ink); border-color:rgba(0,0,0,.22); }
+.sh-powerbtn:active{
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.16);
+  background:linear-gradient(180deg,var(--panel),var(--panel-lo));
+}
+.sh-powerbtn svg{ display:block; width:19px; height:19px; }
+.sh-powerbtn.is-on{
+  color:var(--amber);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.85),
+    inset 0 0 0 1px rgba(255,158,44,.40),
+    0 0 12px rgba(255,158,44,.45),
+    0 1px 2px rgba(0,0,0,.12);
+}
+.sh-powerbtn.is-on svg{ filter:drop-shadow(0 0 5px rgba(255,158,44,.75)); }
+
+
+/* ============================================================
+   ROW 2 — THE BOTTOM BAR (milled straight into the chassis)
+   ============================================================ */
+.sh-bottombar{
+  display:flex;
+  align-items:center;
+  padding:18px 26px;
+  background:transparent;
+  border-top:1px solid rgba(0,0,0,.10);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55);
+}
+
+.sh-cap{
+  display:block;
+  margin-bottom:8px;
+  font-size:10px;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.18em;
+  color:var(--ink2);
+  white-space:nowrap;
+}
+
+.sh-iocell{
+  flex:0 0 auto;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.sh-segzone{
+  flex:1 1 auto;
+  min-width:0;
+  display:flex;
+  align-items:center;
+  justify-content:space-around;
+  flex-wrap:wrap;
+  gap:14px 20px;
+}
+
+.sh-segcell{
+  flex:0 1 auto;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width:900px){
+  .sh-bandstrip{ flex-wrap:wrap; }
+  .sh-bandid   { order:1; }
+  .sh-knobgroup{ order:2; }
+  .sh-bandstrip > .sh-divider{ order:3; }
+  .sh-btncol{
+    order:4;
+    width:auto;
+    flex-direction:row;
+    align-items:center;
+    gap:9px;
+  }
+  .sh-btncol .sh-minibtn{ width:62px; }
+  .sh-dyngroup{
+    order:5;
+    flex:1 1 100%;
+    width:100%;
+  }
+
+  /* bottom bar: INPUT / OUTPUT hold the line, selectors drop beneath */
+  .sh-bottombar{ flex-wrap:wrap; row-gap:18px; }
+  .sh-bottombar > .sh-divider--bar{ display:none; }
+  .sh-iocell--in { order:1; }
+  .sh-iocell--out{ order:2; margin-left:auto; }
+  .sh-segzone{
+    order:3;
+    flex:1 1 100%;
+    width:100%;
+  }
+}
+
+@media (max-width:720px){
+  .sh-bandstrip{ padding:14px 16px; }
+
+  /* knob mounts: two per line */
+  .sh-knobgroup,
+  .sh-dynknobs{
+    flex-wrap:wrap;
+    max-width:calc(var(--sh-knob-w) * 2 + 12px);
+  }
+
+  .sh-bandid{ margin-right:14px; }
+
+  /* dividers are milled away */
+  .sh-divider{ display:none; }
+
+  .sh-bottombar{
+    flex-direction:column;
+    align-items:center;
+    gap:20px;
+    padding:18px 16px;
+  }
+  .sh-iocell--in { order:1; }
+  .sh-iocell--out{ order:3; margin-left:0; }
+  .sh-segzone{
+    order:2;
+    width:100%;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:18px 24px;
+  }
+}
+</style>
+
+<div class="sh-bandstrip">
+
+  <!-- (a) band identity -->
+  <div class="sh-bandid">
+    <div class="sh-bandid-top">
+      <span class="sh-dot"></span>
+      <span class="sh-bandlabel" data-band-number>BAND 3</span>
+      <span class="sh-chevrons">
+        <button class="sh-chev" type="button" data-band-nav="prev" aria-label="Previous band">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 6.5 9 12l5.5 5.5"/></svg>
+        </button>
+        <button class="sh-chev" type="button" data-band-nav="next" aria-label="Next band">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 6.5 15 12l-5.5 5.5"/></svg>
+        </button>
+      </span>
+    </div>
+
+    <div class="sh-shapebtns"></div>
+
+    <select class="sh-select" aria-label="Filter type">
+      <option selected>Bell</option>
+      <option>Low Shelf</option>
+      <option>High Shelf</option>
+      <option>Low Cut</option>
+      <option>High Cut</option>
+      <option>Notch</option>
+      <option>Band Pass</option>
+      <option>Tilt Shelf</option>
+    </select>
+  </div>
+
+  <!-- (b) core knobs -->
+  <div class="sh-knobgroup">
+    <div class="sh-knobmount" data-knob="frequency"></div>
+    <div class="sh-knobmount" data-knob="gain"></div>
+    <div class="sh-knobmount" data-knob="q"></div>
+  </div>
+
+  <!-- (c) milled groove -->
+  <div class="sh-divider" aria-hidden="true"></div>
+
+  <!-- (d) dynamic group -->
+  <div class="sh-dyngroup">
+    <div class="sh-pillmount" data-pill="dynamic"></div>
+    <div class="sh-dynknobs">
+      <div class="sh-knobmount" data-knob="threshold"></div>
+      <div class="sh-knobmount" data-knob="range"></div>
+      <div class="sh-knobmount" data-knob="attack"></div>
+      <div class="sh-knobmount" data-knob="release"></div>
+    </div>
+  </div>
+
+  <!-- (e) right-hand buttons -->
+  <div class="sh-btncol">
+    <button class="sh-minibtn" type="button" data-act="solo" aria-pressed="false">SOLO</button>
+    <button class="sh-powerbtn is-on" type="button" data-act="power" aria-label="Band on/off" aria-pressed="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M8.4 6.9a6.4 6.4 0 1 0 7.2 0"/>
+        <path d="M12 3v8.2"/>
+      </svg>
+    </button>
+    <button class="sh-minibtn" type="button" data-act="sc" aria-pressed="false">SC</button>
+  </div>
+
+</div>
+
+<div class="sh-bottombar">
+
+  <div class="sh-iocell sh-iocell--in">
+    <span class="sh-cap">INPUT</span>
+    <div class="sh-knobmount" data-knob="input" data-size="lg"></div>
+  </div>
+
+  <div class="sh-divider sh-divider--bar" aria-hidden="true"></div>
+
+  <div class="sh-segzone">
+    <div class="sh-segcell">
+      <span class="sh-cap">PHASE &middot;</span>
+      <div class="sh-segmount" data-seg="phase"></div>
+    </div>
+    <div class="sh-segcell">
+      <span class="sh-cap">SCALE &middot;</span>
+      <div class="sh-segmount" data-seg="scale"></div>
+    </div>
+    <div class="sh-segcell">
+      <span class="sh-cap">MODE &middot;</span>
+      <div class="sh-segmount" data-seg="mode"></div>
+    </div>
+  </div>
+
+  <div class="sh-divider sh-divider--bar" aria-hidden="true"></div>
+
+  <div class="sh-iocell sh-iocell--out">
+    <span class="sh-cap">OUTPUT</span>
+    <div class="sh-knobmount" data-knob="output" data-size="lg"></div>
+  </div>
+
+</div>

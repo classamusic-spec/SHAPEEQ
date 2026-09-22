@@ -1,0 +1,101 @@
+<style>
+/* ---- dark graph well, inset into the brushed chassis ---- */
+.sh-graphwrap{
+  margin: 0 20px 16px;
+  border-radius: 12px;
+  padding: 3px;
+  /* the milled bezel around the display: dark groove, bright lower lip */
+  background: linear-gradient(180deg,#9AA1A9 0%, #C6CCD2 55%, #EDEFF1 100%);
+  box-shadow:
+    inset 0 2px 4px rgba(0,0,0,.38),
+    0 1px 0 rgba(255,255,255,.75);
+}
+.sh-graph{
+  position: relative;
+  border-radius: 10px;
+  background: linear-gradient(180deg, var(--well-bg2) 0%, var(--well-bg) 68%);
+  box-shadow:
+    inset 0 1px 12px rgba(0,0,0,.85),
+    inset 0 0 0 1px rgba(255,255,255,.045);
+  overflow: hidden;
+  height: 396px;
+}
+#shape-graph{ display:block; width:100%; height:100%; touch-action:none; cursor:crosshair; }
+
+/* ---- toolbar overlay, floating on the display ---- */
+.sh-gbar{
+  position:absolute; top:12px; left:14px; right:14px;
+  display:flex; align-items:center; gap:10px;
+  pointer-events:none;
+}
+.sh-gbar > *{ pointer-events:auto; }
+.sh-gbar-sp{ margin-left:auto; }
+
+.sh-tabs, .sh-anbtns{ display:flex; align-items:center; gap:4px; }
+
+/* a button that sits on the dark display */
+.sh-dbtn{
+  font: 500 10px/1 Inter, system-ui, sans-serif;
+  letter-spacing:.14em; text-transform:uppercase;
+  color: var(--on-dark2);
+  background: rgba(255,255,255,.045);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 7px;
+  padding: 8px 13px;
+  cursor:pointer;
+  transition: color 130ms ease, background 130ms ease, border-color 130ms ease, box-shadow 130ms ease;
+  white-space:nowrap;
+}
+.sh-dbtn:hover{ color: var(--on-dark); background: rgba(255,255,255,.08); }
+.sh-dbtn[aria-pressed="true"]{
+  color: var(--amber);
+  background: linear-gradient(180deg,#2A2118,#1A140E);
+  border-color: rgba(255,158,44,.55);
+  box-shadow: 0 0 0 1px rgba(255,158,44,.35), 0 0 12px rgba(255,158,44,.28);
+}
+.sh-dbtn:focus-visible{ outline:2px solid var(--cyan); outline-offset:2px; }
+
+/* the ANALYZER master toggle carries a dot, like the DYNAMIC pill */
+.sh-dbtn--dot{ display:inline-flex; align-items:center; gap:7px; }
+.sh-dbtn--dot::before{
+  content:""; width:6px; height:6px; border-radius:999px;
+  background: transparent; border:1px solid currentColor; flex:none;
+  transition: all 130ms ease;
+}
+.sh-dbtn--dot[aria-pressed="true"]::before{
+  background: var(--amber); border-color: var(--amber);
+  box-shadow: 0 0 6px rgba(255,158,44,.9);
+}
+
+@media (max-width: 860px){
+  .sh-graph{ height: 320px; }
+  .sh-gbar{ top:10px; left:10px; right:10px; gap:6px; flex-wrap:wrap; }
+  .sh-dbtn{ padding:7px 10px; letter-spacing:.1em; }
+}
+@media (max-width: 620px){
+  .sh-graphwrap{ margin: 0 12px 12px; }
+  .sh-graph{ height: 262px; }
+  .sh-gbar-sp{ margin-left:0; }
+  .sh-gbar{ position:static; padding:10px 10px 0; }
+}
+</style>
+
+<div class="sh-graphwrap">
+  <div class="sh-graph">
+    <canvas id="shape-graph" aria-label="Equalizer response curve and spectrum analyser"></canvas>
+    <div class="sh-gbar">
+      <div class="sh-tabs" id="sh-tabs" role="group" aria-label="Editor page">
+        <button class="sh-dbtn" data-tab="eq" aria-pressed="true">EQ</button>
+        <button class="sh-dbtn" data-tab="dynamic" aria-pressed="false">Dynamic</button>
+        <button class="sh-dbtn" data-tab="spectral" aria-pressed="false">Spectral</button>
+      </div>
+      <div class="sh-gbar-sp"></div>
+      <div class="sh-anbtns" id="sh-anbtns" role="group" aria-label="Analyser">
+        <button class="sh-dbtn sh-dbtn--dot" id="sh-an-toggle" aria-pressed="true">Analyzer</button>
+        <button class="sh-dbtn" data-an="pre" aria-pressed="true">Pre</button>
+        <button class="sh-dbtn" data-an="post" aria-pressed="false">Post</button>
+        <button class="sh-dbtn" data-an="both" aria-pressed="false">Both</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,833 @@
+<style>
+/* ==========================================================================
+   SHAPE — controls: metal knob, filter-shape buttons, pill toggle, segmented
+   All selectors are namespaced `.sh-`.
+   ========================================================================== */
+
+.sh-knob,
+.sh-shapes,
+.sh-shape-btn,
+.sh-pill,
+.sh-seg,
+.sh-seg-btn{
+  --cyan:#45C2F0;
+  --amber:#FF9E2C;
+  --violet:#9B7BF0;
+  --ink:#262B33;
+  --ink2:#5B636D;
+
+  --sh-sans: var(--sans, Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+
+  --sh-light-face: linear-gradient(180deg,#E8EBEE,#D6DBE0);
+  --sh-dark-face:  linear-gradient(180deg,#2A2E35,#191D23);
+  --sh-amber-ring: 0 0 0 1px rgba(255,158,44,.7), 0 0 10px rgba(255,158,44,.35);
+
+  box-sizing:border-box;
+}
+.sh-knob *,
+.sh-shapes *,
+.sh-pill *,
+.sh-seg *{ box-sizing:border-box; }
+
+/* --------------------------------------------------------------------------
+   1. The knob
+   -------------------------------------------------------------------------- */
+
+.sh-knob{
+  --sh-accent:var(--cyan);
+  --sh-body:52px;          /* knob body diameter                */
+  --sh-box:70px;           /* dial field: body + arc + tick ring */
+  --sh-ind-w:2px;
+  --sh-ind-h:13px;
+  --sh-ind-top:3px;
+
+  width:96px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  font-family:var(--sh-sans);
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+
+.sh-knob--lg{
+  --sh-body:72px;
+  --sh-box:94px;
+  --sh-ind-w:2.5px;
+  --sh-ind-h:18px;
+  --sh-ind-top:4px;
+}
+
+.sh-knob--cyan  { --sh-accent:var(--cyan);   }
+.sh-knob--amber { --sh-accent:var(--amber);  }
+.sh-knob--violet{ --sh-accent:var(--violet); }
+
+/* the interactive field ----------------------------------------------------*/
+.sh-knob-dial{
+  position:relative;
+  width:var(--sh-box);
+  height:var(--sh-box);
+  border-radius:50%;
+  cursor:ns-resize;
+  touch-action:none;
+  outline:none;
+}
+.sh-knob-dial:focus-visible{
+  outline:2px solid var(--sh-accent);
+  outline-offset:1px;
+}
+.sh-knob--active .sh-knob-dial{ cursor:grabbing; }
+
+/* ticks + value arc --------------------------------------------------------*/
+.sh-knob-svg{
+  position:absolute;
+  inset:0;
+  overflow:visible;
+  pointer-events:none;
+  display:block;
+}
+.sh-knob-ticks line{
+  stroke:rgba(0,0,0,.28);
+  stroke-linecap:butt;
+}
+.sh-knob-arc,
+.sh-knob-arc-glow,
+.sh-knob-arc-bloom{
+  fill:none;
+  stroke:var(--sh-accent);
+  stroke-linecap:round;
+}
+.sh-knob-arc-bloom{ opacity:.42; }
+.sh-knob-arc-glow { opacity:.13; }
+
+/* accent light bouncing off the chassis around the base --------------------*/
+.sh-knob-halo{
+  position:absolute;
+  inset:-6px;
+  border-radius:50%;
+  pointer-events:none;
+  background:radial-gradient(circle closest-side, var(--sh-accent) 58%, rgba(0,0,0,0) 76%);
+  opacity:.06;
+  filter:blur(7px);
+}
+.sh-knob-dial:hover .sh-knob-halo,
+.sh-knob--active .sh-knob-halo{ opacity:.12; }
+
+/* the machined body --------------------------------------------------------*/
+.sh-knob-body{
+  position:absolute;
+  left:50%; top:50%;
+  width:var(--sh-body);
+  height:var(--sh-body);
+  margin:calc(var(--sh-body) / -2) 0 0 calc(var(--sh-body) / -2);
+  border-radius:50%;
+  isolation:isolate;
+  background:radial-gradient(circle at 38% 30%,
+      #FCFCFD 0%,
+      #E4E7EA 30%,
+      #BFC5CB 62%,
+      #9AA1A9 88%,
+      #C3C9CF 100%);
+  box-shadow:
+      0 0 0 1px rgba(0,0,0,.30),
+      0 2px 5px rgba(0,0,0,.30),
+      0 6px 12px rgba(0,0,0,.10),
+      inset 0 1px 1px rgba(255,255,255,.85),
+      inset 0 -2px 3px rgba(0,0,0,.16),
+      inset 0 0 9px rgba(84,93,105,.26);   /* pulls the dome flat, as a machined face is */
+}
+
+/* micro grain — the anodised tooth of the metal */
+.sh-knob-body::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:1;
+  border-radius:50%;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='90' height='90'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='90' height='90' filter='url(%23n)'/></svg>");
+  background-size:90px 90px;
+  mix-blend-mode:overlay;
+  opacity:.42;
+  -webkit-mask:radial-gradient(circle closest-side,
+      rgba(0,0,0,.45) 0 12%, #000 34%, #000 84%, rgba(0,0,0,.55) 100%);
+  mask:radial-gradient(circle closest-side,
+      rgba(0,0,0,.45) 0 12%, #000 34%, #000 84%, rgba(0,0,0,.55) 100%);
+}
+
+/* the circular lay left by the lathe, only where it can resolve cleanly */
+.sh-knob-lay{
+  position:absolute;
+  inset:0;
+  z-index:2;
+  border-radius:50%;
+  pointer-events:none;
+  background:repeating-conic-gradient(from 0deg,
+      rgba(255,255,255,.95) 0deg .55deg,
+      rgba(255,255,255,0)   .55deg 1.20deg,
+      rgba(0,0,0,.95)       1.20deg 1.75deg,
+      rgba(0,0,0,0)         1.75deg 2.55deg);
+  mix-blend-mode:overlay;
+  opacity:.15;
+  -webkit-mask:radial-gradient(circle closest-side,
+      rgba(0,0,0,0) 0 48%, #000 74%, #000 88%, rgba(0,0,0,.40) 100%);
+  mask:radial-gradient(circle closest-side,
+      rgba(0,0,0,0) 0 48%, #000 74%, #000 88%, rgba(0,0,0,.40) 100%);
+}
+
+/* anisotropic glint riding the rim */
+.sh-knob-body::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:3;
+  border-radius:50%;
+  background:conic-gradient(from 196deg,
+      rgba(255,255,255,0)   0deg,
+      rgba(255,255,255,.62) 40deg,
+      rgba(255,255,255,0)   94deg,
+      rgba(0,0,0,.26)       168deg,
+      rgba(255,255,255,0)   238deg,
+      rgba(255,255,255,.20) 302deg,
+      rgba(255,255,255,0)   344deg);
+  -webkit-mask:radial-gradient(circle closest-side,
+      rgba(0,0,0,0) 0 78%, #000 90%, #000 100%);
+  mask:radial-gradient(circle closest-side,
+      rgba(0,0,0,0) 0 78%, #000 90%, #000 100%);
+}
+
+/* indicator ---------------------------------------------------------------*/
+.sh-knob-rot{
+  position:absolute;
+  inset:0;
+  z-index:4;
+  transform:rotate(-135deg);
+  will-change:transform;
+}
+.sh-knob-ind{
+  position:absolute;
+  left:50%;
+  top:var(--sh-ind-top);
+  width:var(--sh-ind-w);
+  height:var(--sh-ind-h);
+  margin-left:calc(var(--sh-ind-w) / -2);
+  border-radius:calc(var(--sh-ind-w) / 2);
+  background:#2A2F36;
+  box-shadow:.5px .5px 0 rgba(255,255,255,.45);
+}
+
+/* label + readout ---------------------------------------------------------*/
+.sh-knob-label{
+  margin-top:9px;
+  font-size:9.5px;
+  font-weight:500;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--ink2);
+  white-space:nowrap;
+  text-align:center;
+}
+.sh-knob-value{
+  margin-top:3px;
+  font-size:13.5px;
+  font-weight:500;
+  color:var(--ink);
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+  text-align:center;
+}
+
+/* large variant: a three-stop scale instead of the label / readout stack ---*/
+.sh-knob-scale{
+  margin-top:8px;
+  width:calc(var(--sh-body) + 6px);
+  display:flex;
+  justify-content:space-between;
+  font-size:9px;
+  font-weight:500;
+  letter-spacing:.04em;
+  color:var(--ink2);
+  font-variant-numeric:tabular-nums;
+}
+.sh-knob-scale span{ line-height:1; }
+.sh-knob-scale span:nth-child(2){ transform:translateX(.5px); }
+
+@media (prefers-reduced-motion: no-preference){
+  .sh-knob:not(.sh-knob--active) .sh-knob-rot{
+    transition:transform 110ms cubic-bezier(.22,.61,.36,1);
+  }
+  .sh-knob-halo{ transition:opacity 140ms ease; }
+}
+
+/* --------------------------------------------------------------------------
+   2A. Filter-shape icon buttons
+   -------------------------------------------------------------------------- */
+
+.sh-shapes{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:5px;
+  border-radius:10px;
+  background:linear-gradient(180deg,#F3F5F7,#E7EAEE);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.85), 0 0 0 1px rgba(0,0,0,.07);
+}
+.sh-shape-btn{
+  width:34px;
+  height:34px;
+  padding:0;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:7px;
+  border:1px solid rgba(0,0,0,.14);
+  background:var(--sh-light-face);
+  color:var(--ink2);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.75), 0 1px 1px rgba(0,0,0,.07);
+  cursor:pointer;
+  outline:none;
+  -webkit-appearance:none;
+  appearance:none;
+}
+.sh-shape-btn svg{ display:block; width:22px; height:16px; }
+.sh-shape-btn svg path{
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.6;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  vector-effect:non-scaling-stroke;
+}
+.sh-shape-btn:hover{ background:linear-gradient(180deg,#EDEFF2,#DCE1E6); }
+.sh-shape-btn:focus-visible{ box-shadow:0 0 0 2px rgba(69,194,240,.75); }
+.sh-shape-btn.sh-on{
+  background:var(--sh-dark-face);
+  border-color:rgba(0,0,0,.55);
+  color:var(--amber);
+  box-shadow:var(--sh-amber-ring), inset 0 1px 0 rgba(255,255,255,.09);
+}
+
+/* --------------------------------------------------------------------------
+   2B. Amber pill toggle
+   -------------------------------------------------------------------------- */
+
+.sh-pill{
+  height:30px;
+  padding:0 16px;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  border-radius:999px;
+  border:1px solid rgba(0,0,0,.14);
+  background:var(--sh-light-face);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.75), 0 1px 1px rgba(0,0,0,.07);
+  font-family:var(--sh-sans);
+  font-size:10px;
+  font-weight:500;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--ink2);
+  white-space:nowrap;
+  cursor:pointer;
+  outline:none;
+  -webkit-appearance:none;
+  appearance:none;
+}
+.sh-pill-dot{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  flex:0 0 auto;
+  background:transparent;
+  box-shadow:inset 0 0 0 1.5px currentColor;
+}
+.sh-pill:hover{ background:linear-gradient(180deg,#EDEFF2,#DCE1E6); }
+.sh-pill:focus-visible{ box-shadow:0 0 0 2px rgba(69,194,240,.75); }
+.sh-pill.sh-on{
+  background:var(--sh-dark-face);
+  border-color:rgba(0,0,0,.55);
+  color:var(--amber);
+  box-shadow:var(--sh-amber-ring), inset 0 1px 0 rgba(255,255,255,.09);
+}
+.sh-pill.sh-on .sh-pill-dot{
+  background:var(--amber);
+  box-shadow:0 0 6px var(--amber);
+}
+
+/* --------------------------------------------------------------------------
+   2C. Segmented selector
+   -------------------------------------------------------------------------- */
+
+.sh-seg{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+}
+.sh-seg-btn{
+  height:32px;
+  padding:0 18px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:7px;
+  border:1px solid rgba(0,0,0,.14);
+  background:var(--sh-light-face);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.75), 0 1px 1px rgba(0,0,0,.07);
+  font-family:var(--sh-sans);
+  font-size:10px;
+  font-weight:500;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--ink2);
+  white-space:nowrap;
+  cursor:pointer;
+  outline:none;
+  -webkit-appearance:none;
+  appearance:none;
+}
+.sh-seg-btn:hover{ background:linear-gradient(180deg,#EDEFF2,#DCE1E6); }
+.sh-seg-btn:focus-visible{ box-shadow:0 0 0 2px rgba(69,194,240,.75); }
+.sh-seg-btn.sh-on{
+  background:var(--sh-dark-face);
+  border-color:rgba(0,0,0,.55);
+  color:var(--amber);
+  box-shadow:var(--sh-amber-ring), inset 0 1px 0 rgba(255,255,255,.09);
+}
+
+@media (prefers-reduced-motion: no-preference){
+  .sh-shape-btn,
+  .sh-pill,
+  .sh-pill-dot,
+  .sh-seg-btn{ transition:background 120ms ease, color 120ms ease, box-shadow 140ms ease, border-color 120ms ease; }
+}
+</style>
+
+<script>
+(function(){
+  "use strict";
+
+  var ARC_START = 135;          /* 7:30 */
+  var ARC_SWEEP = 270;          /* to 4:30, clockwise through 12 o'clock */
+  var DRAG_TRAVEL = 190;        /* px of vertical travel for the full range */
+  var FINE = 0.22;
+  var uid = 0;
+
+  var SIZES = {
+    md:{ body:52, box:70, rArc:28.2, tickIn:31.0, tickOut:34.0, arcW:2.5, tickW:1 },
+    lg:{ body:72, box:94, rArc:38.6, tickIn:42.0, tickOut:45.6, arcW:3.2, tickW:1 }
+  };
+
+  var clamp = function(v,a,b){ return v < a ? a : v > b ? b : v; };
+
+  function polar(c, r, deg){
+    var t = deg * Math.PI / 180;
+    return [ c + r * Math.cos(t), c + r * Math.sin(t) ];
+  }
+
+  function arcPath(c, r, a0, a1){
+    if (Math.abs(a1 - a0) < 0.4) a1 = a0 + 0.4;   /* keep a visible LED dot at the origin */
+    var p0 = polar(c, r, a0), p1 = polar(c, r, a1);
+    var large = Math.abs(a1 - a0) > 180 ? 1 : 0;
+    var sweep = a1 > a0 ? 1 : 0;
+    return "M" + p0[0].toFixed(2) + " " + p0[1].toFixed(2) +
+           "A" + r + " " + r + " 0 " + large + " " + sweep + " " +
+           p1[0].toFixed(2) + " " + p1[1].toFixed(2);
+  }
+
+  /* ------------------------------------------------------------------ knob */
+
+  function MetalKnob(opts){
+    opts = opts || {};
+
+    this.label    = opts.label != null ? opts.label : "";
+    this.unit     = opts.unit != null ? opts.unit : "";
+    this.min      = opts.min != null ? +opts.min : 0;
+    this.max      = opts.max != null ? +opts.max : 1;
+    this.curve    = opts.curve || "lin";
+    this.bipolar  = !!opts.bipolar;
+    this.accent   = (opts.accent === "amber" || opts.accent === "violet") ? opts.accent : "cyan";
+    this.size     = opts.size === "lg" ? "lg" : "md";
+    this.onChange = typeof opts.onChange === "function" ? opts.onChange : null;
+    this.format   = typeof opts.format === "function" ? opts.format : null;
+
+    if (this.curve === "log" && !(this.min > 0 && this.max > 0)) this.curve = "lin";
+
+    var P = this.P = SIZES[this.size];
+    this._value = clamp(opts.value != null ? +opts.value : this.min, this.min, this.max);
+    this._initial = this._value;
+
+    /* ---- DOM ---- */
+    var el = this.el = document.createElement("div");
+    el.className = "sh-knob sh-knob--" + this.size + " sh-knob--" + this.accent;
+
+    var gid = "sh-glow-" + (++uid);
+    var c = P.box / 2;
+
+    var ticks = "";
+    for (var i = 0; i < 11; i++){
+      var a = ARC_START + ARC_SWEEP * (i / 10);
+      var p0 = polar(c, P.tickIn, a), p1 = polar(c, P.tickOut, a);
+      ticks += '<line x1="' + p0[0].toFixed(2) + '" y1="' + p0[1].toFixed(2) +
+               '" x2="' + p1[0].toFixed(2) + '" y2="' + p1[1].toFixed(2) +
+               '" stroke-width="' + P.tickW + '"/>';
+    }
+
+    var dial = this.dial = document.createElement("div");
+    dial.className = "sh-knob-dial";
+    dial.setAttribute("role", "slider");
+    dial.setAttribute("tabindex", "0");
+    dial.setAttribute("aria-orientation", "vertical");
+    dial.setAttribute("aria-valuemin", String(this.min));
+    dial.setAttribute("aria-valuemax", String(this.max));
+    if (this.label) dial.setAttribute("aria-label", this.label);
+
+    dial.innerHTML =
+      '<svg class="sh-knob-svg" width="' + P.box + '" height="' + P.box +
+        '" viewBox="0 0 ' + P.box + ' ' + P.box + '" aria-hidden="true" focusable="false"' +
+        ' shape-rendering="geometricPrecision">' +
+        '<defs><filter id="' + gid + '" filterUnits="userSpaceOnUse" x="-10" y="-10" width="' +
+          (P.box + 20) + '" height="' + (P.box + 20) + '">' +
+          '<feGaussianBlur stdDeviation="' + (P.arcW * 0.8).toFixed(2) + '"/>' +
+        '</filter></defs>' +
+        '<g class="sh-knob-ticks">' + ticks + '</g>' +
+        '<path class="sh-knob-arc-glow" stroke-width="' + (P.arcW * 2.6).toFixed(2) + '"/>' +
+        '<path class="sh-knob-arc-bloom" filter="url(#' + gid + ')" stroke-width="' + (P.arcW * 1.6).toFixed(2) + '"/>' +
+        '<path class="sh-knob-arc" stroke-width="' + P.arcW + '"/>' +
+      '</svg>' +
+      '<div class="sh-knob-halo"></div>' +
+      '<div class="sh-knob-body">' +
+        '<i class="sh-knob-lay"></i>' +
+        '<div class="sh-knob-rot"><i class="sh-knob-ind"></i></div>' +
+      '</div>';
+
+    el.appendChild(dial);
+
+    this.arc   = dial.querySelector(".sh-knob-arc");
+    this.bloom = dial.querySelector(".sh-knob-arc-bloom");
+    this.glow  = dial.querySelector(".sh-knob-arc-glow");
+    this.rot   = dial.querySelector(".sh-knob-rot");
+
+    if (this.size === "lg" && !opts.readout){
+      var scale = document.createElement("div");
+      scale.className = "sh-knob-scale";
+      var marks = opts.scale || [ this._scaleText(this.min),
+                                  this._scaleText((this.min + this.max) / 2),
+                                  this._scaleText(this.max) ];
+      for (var m = 0; m < marks.length; m++){
+        var s = document.createElement("span");
+        s.textContent = marks[m];
+        scale.appendChild(s);
+      }
+      el.appendChild(scale);
+      this.valueEl = null;
+    } else {
+      if (this.label){
+        var lab = document.createElement("div");
+        lab.className = "sh-knob-label";
+        lab.textContent = this.label;
+        el.appendChild(lab);
+      }
+      var val = this.valueEl = document.createElement("div");
+      val.className = "sh-knob-value";
+      el.appendChild(val);
+    }
+
+    this._bind();
+    this._paint();
+  }
+
+  MetalKnob.prototype._scaleText = function(v){
+    var r = Math.round(v * 10) / 10;
+    var s = (Math.abs(r % 1) < 1e-9) ? String(Math.round(r)) : r.toFixed(1);
+    return (this.bipolar && r > 0) ? "+" + s : s;
+  };
+
+  /* value <-> normalised 0..1 ------------------------------------------- */
+
+  MetalKnob.prototype._toNorm = function(v){
+    var min = this.min, max = this.max;
+    if (max === min) return 0;
+    if (this.curve === "log") return Math.log(v / min) / Math.log(max / min);
+    var t = (v - min) / (max - min);
+    if (this.curve === "skew") t = Math.pow(clamp(t, 0, 1), 1 / 2.6);
+    return t;
+  };
+
+  MetalKnob.prototype._fromNorm = function(t){
+    t = clamp(t, 0, 1);
+    var min = this.min, max = this.max;
+    if (this.curve === "log") return min * Math.pow(max / min, t);
+    if (this.curve === "skew") return min + (max - min) * Math.pow(t, 2.6);
+    return min + (max - min) * t;
+  };
+
+  MetalKnob.prototype._text = function(){
+    var v = this._value;
+    if (this.format) return this.format(v);
+    var a = Math.abs(v);
+    var s = a >= 1000 ? v.toFixed(0) : a >= 100 ? v.toFixed(0) : a >= 10 ? v.toFixed(1) : v.toFixed(2);
+    if (this.bipolar && v > 0) s = "+" + s;
+    if (!this.unit) return s;
+    return (this.unit === "%" || this.unit === "°" || this.unit === ":1") ? s + this.unit : s + " " + this.unit;
+  };
+
+  /* paint ---------------------------------------------------------------- */
+
+  MetalKnob.prototype._paint = function(){
+    var P = this.P, c = P.box / 2;
+    var t = clamp(this._toNorm(this._value), 0, 1);
+    var a = ARC_START + ARC_SWEEP * t;
+    var a0 = this.bipolar ? (ARC_START + ARC_SWEEP / 2) : ARC_START;
+    var d = arcPath(c, P.rArc, a0, a);
+
+    this.arc.setAttribute("d", d);
+    this.bloom.setAttribute("d", d);
+    this.glow.setAttribute("d", d);
+    this.rot.style.transform = "rotate(" + (a - 270).toFixed(2) + "deg)";
+
+    var txt = this._text();
+    if (this.valueEl) this.valueEl.textContent = txt;
+    this.dial.setAttribute("aria-valuenow", String(Math.round(this._value * 1e4) / 1e4));
+    this.dial.setAttribute("aria-valuetext", txt);
+  };
+
+  MetalKnob.prototype._apply = function(v, notify){
+    v = clamp(+v, Math.min(this.min, this.max), Math.max(this.min, this.max));
+    if (!isFinite(v)) return;
+    var changed = v !== this._value;
+    this._value = v;
+    this._paint();
+    if (changed && notify !== false && this.onChange) this.onChange(this._value);
+  };
+
+  MetalKnob.prototype.set = function(v, notify){ this._apply(v, notify); return this; };
+
+  Object.defineProperty(MetalKnob.prototype, "value", {
+    get:function(){ return this._value; },
+    set:function(v){ this._apply(v, true); }
+  });
+
+  /* interaction ----------------------------------------------------------- */
+
+  MetalKnob.prototype._nudge = function(dNorm){
+    this._apply(this._fromNorm(clamp(this._toNorm(this._value) + dNorm, 0, 1)), true);
+  };
+
+  MetalKnob.prototype._bind = function(){
+    var self = this, dial = this.dial, drag = null;
+    var tap = { t:0, x:0, y:0 };
+
+    dial.addEventListener("pointerdown", function(e){
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+
+      /* double-click / double-tap resets; done here as well as on dblclick,
+         because preventDefault() below can suppress compatibility events. */
+      var now = Date.now();
+      if (now - tap.t < 320 && Math.abs(e.clientX - tap.x) < 6 && Math.abs(e.clientY - tap.y) < 6){
+        tap.t = 0;
+        self._apply(self._initial, true);
+      } else {
+        tap = { t:now, x:e.clientX, y:e.clientY };
+      }
+
+      drag = { id:e.pointerId, lastY:e.clientY, base:clamp(self._toNorm(self._value), 0, 1), acc:0 };
+      try { dial.setPointerCapture(e.pointerId); } catch(_){}
+      self.el.classList.add("sh-knob--active");
+      if (document.activeElement !== dial) dial.focus({ preventScroll:true });
+      e.preventDefault();
+    });
+
+    dial.addEventListener("pointermove", function(e){
+      if (!drag || e.pointerId !== drag.id) return;
+      var dy = drag.lastY - e.clientY;
+      drag.lastY = e.clientY;
+      drag.acc += (dy / DRAG_TRAVEL) * (e.shiftKey ? FINE : 1);
+      self._apply(self._fromNorm(drag.base + drag.acc), true);
+      e.preventDefault();
+    });
+
+    function end(e){
+      if (!drag || (e && e.pointerId !== drag.id)) return;
+      try { dial.releasePointerCapture(drag.id); } catch(_){}
+      drag = null;
+      self.el.classList.remove("sh-knob--active");
+    }
+    dial.addEventListener("pointerup", end);
+    dial.addEventListener("pointercancel", end);
+    dial.addEventListener("lostpointercapture", end);
+
+    this._onWheel = function(e){
+      e.preventDefault();
+      var dir = (e.deltaY || e.detail || -e.wheelDelta) > 0 ? -1 : 1;
+      self._nudge(dir * (e.shiftKey ? 0.02 * FINE : 0.02));
+    };
+    dial.addEventListener("wheel", this._onWheel, { passive:false });
+
+    dial.addEventListener("dblclick", function(e){
+      e.preventDefault();
+      self._apply(self._initial, true);
+    });
+
+    dial.addEventListener("keydown", function(e){
+      var step = e.shiftKey ? 0.02 * FINE : 0.02;
+      var k = e.key;
+      if (k === "ArrowUp" || k === "ArrowRight")      self._nudge(step);
+      else if (k === "ArrowDown" || k === "ArrowLeft") self._nudge(-step);
+      else if (k === "PageUp")   self._nudge(0.1);
+      else if (k === "PageDown") self._nudge(-0.1);
+      else if (k === "Home")     self._apply(self.min, true);
+      else if (k === "End")      self._apply(self.max, true);
+      else return;
+      e.preventDefault();
+    });
+  };
+
+  MetalKnob.prototype.destroy = function(){
+    this.dial.removeEventListener("wheel", this._onWheel);
+    if (this.el.parentNode) this.el.parentNode.removeChild(this.el);
+  };
+
+  /* ------------------------------------------------- filter-shape buttons */
+
+  var GLYPHS = {
+    lowshelf : "M1.5 4.6H5.4C8.4 4.6 8.4 11.4 11.4 11.4H20.5",
+    bell     : "M1.5 11.6H5.6C8.3 11.6 8.1 4.2 10.9 4.2C13.7 4.2 13.5 11.6 16.2 11.6H20.5",
+    highshelf: "M1.5 11.4H10.6C13.6 11.4 13.6 4.6 16.6 4.6H20.5",
+    cut      : "M1.5 14.2H7.6L11.6 3.8H20.5"
+  };
+  var GLYPH_ORDER = ["lowshelf", "bell", "highshelf", "cut"];
+  var GLYPH_TITLE = { lowshelf:"Low shelf", bell:"Bell", highshelf:"High shelf", cut:"Cut" };
+
+  function shapeIcon(name){
+    return '<svg viewBox="0 0 22 16" aria-hidden="true" focusable="false"><path d="' +
+           (GLYPHS[name] || GLYPHS.bell) + '"/></svg>';
+  }
+
+  function makeShapeButtons(opts){
+    opts = opts || {};
+    var shapes = opts.shapes || GLYPH_ORDER;
+    var idx = opts.value != null ? opts.value : (opts.active != null ? opts.active : 0);
+
+    var el = document.createElement("div");
+    el.className = "sh-shapes";
+    el.setAttribute("role", "group");
+    if (opts.label) el.setAttribute("aria-label", opts.label);
+
+    var btns = shapes.map(function(name, i){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "sh-shape-btn";
+      b.innerHTML = shapeIcon(name);
+      b.title = GLYPH_TITLE[name] || name;
+      b.setAttribute("aria-label", GLYPH_TITLE[name] || name);
+      b.addEventListener("click", function(){ api.set(i, true); });
+      el.appendChild(b);
+      return b;
+    });
+
+    var api = {
+      el:el,
+      value:idx,
+      shapes:shapes,
+      set:function(i, notify){
+        i = clamp(i | 0, 0, btns.length - 1);
+        var changed = i !== api.value;
+        api.value = i;
+        for (var n = 0; n < btns.length; n++){
+          var on = n === i;
+          btns[n].classList.toggle("sh-on", on);
+          btns[n].setAttribute("aria-pressed", on ? "true" : "false");
+        }
+        if (changed && notify && typeof opts.onChange === "function") opts.onChange(i, shapes[i]);
+        return api;
+      }
+    };
+    el.__ctl = api;
+    return api.set(idx, false);
+  }
+
+  /* ---------------------------------------------------------- pill toggle */
+
+  function makePill(opts){
+    opts = opts || {};
+    var el = document.createElement("button");
+    el.type = "button";
+    el.className = "sh-pill";
+    el.innerHTML = '<span class="sh-pill-dot"></span><span class="sh-pill-txt"></span>';
+    el.querySelector(".sh-pill-txt").textContent = opts.label || "";
+
+    var api = {
+      el:el,
+      value:!!opts.on,
+      set:function(on, notify){
+        on = !!on;
+        var changed = on !== api.value;
+        api.value = on;
+        el.classList.toggle("sh-on", on);
+        el.setAttribute("aria-pressed", on ? "true" : "false");
+        if (changed && notify && typeof opts.onChange === "function") opts.onChange(on);
+        return api;
+      },
+      toggle:function(){ return api.set(!api.value, true); }
+    };
+    el.addEventListener("click", function(){ api.toggle(); });
+    el.__ctl = api;
+    return api.set(!!opts.on, false);
+  }
+
+  /* ----------------------------------------------------- segmented select */
+
+  function makeSegmented(opts){
+    opts = opts || {};
+    var options = (opts.options || []).map(function(o){
+      return (typeof o === "string") ? { label:o, value:o } : { label:o.label, value:o.value != null ? o.value : o.label };
+    });
+    var idx = opts.value != null ? opts.value : (opts.active != null ? opts.active : 0);
+    if (typeof idx !== "number"){
+      var found = options.findIndex(function(o){ return o.value === idx; });
+      idx = found < 0 ? 0 : found;
+    }
+
+    var el = document.createElement("div");
+    el.className = "sh-seg";
+    el.setAttribute("role", "group");
+    if (opts.label) el.setAttribute("aria-label", opts.label);
+
+    var btns = options.map(function(o, i){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "sh-seg-btn";
+      b.textContent = o.label;
+      b.addEventListener("click", function(){ api.set(i, true); });
+      el.appendChild(b);
+      return b;
+    });
+
+    var api = {
+      el:el,
+      value:idx,
+      options:options,
+      set:function(i, notify){
+        i = clamp(i | 0, 0, btns.length - 1);
+        var changed = i !== api.value;
+        api.value = i;
+        for (var n = 0; n < btns.length; n++){
+          var on = n === i;
+          btns[n].classList.toggle("sh-on", on);
+          btns[n].setAttribute("aria-pressed", on ? "true" : "false");
+        }
+        if (changed && notify && typeof opts.onChange === "function") opts.onChange(i, options[i].value);
+        return api;
+      }
+    };
+    el.__ctl = api;
+    return api.set(idx, false);
+  }
+
+  window.MetalKnob = MetalKnob;
+  window.makeShapeButtons = makeShapeButtons;
+  window.makePill = makePill;
+  window.makeSegmented = makeSegmented;
+})();
+</script>

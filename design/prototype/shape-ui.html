@@ -1,0 +1,3490 @@
+<title>SHAPE Spectral Equalizer</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&display=swap">
+
+<style>
+/* ---- page ground: the plugin floats on a neutral desk ---- */
+html,body{ background:#7E848B; }
+body{
+  margin:0; padding-block:22px; padding-inline:16px;
+  font-family:Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  color:#262B33; -webkit-font-smoothing:antialiased;
+}
+.sh-stage{ max-width:1360px; margin-inline:auto; }
+*{ box-sizing:border-box; }
+:focus-visible{ outline:2px solid #45C2F0; outline-offset:2px; }
+@media (prefers-reduced-motion: reduce){ *{ transition-duration:1ms !important; } }
+
+:root{
+  --chassis-hi:#F2F4F6; --chassis:#D4D8DD; --chassis-lo:#AEB4BB; --chassis-edge:#8A9098;
+  --panel-hi:#E2E5E9;  --panel:#D0D5DA;   --panel-lo:#BCC2C9;
+  --well-bg:#0C0E12;   --well-bg2:#171B21; --well-line:#262B33; --well-edge:#05070A;
+  --ink:#262B33; --ink2:#5B636D; --ink3:#878F99;
+  --on-dark:#C8CFD8; --on-dark2:#7B838E;
+  --amber:#FF9E2C; --cyan:#45C2F0; --violet:#9B7BF0; --green:#6FC98A;
+}
+
+/* ============ chassis shell ============ */
+.sh-chassis,
+.sh-chassis *,
+.sh-chassis *::before,
+.sh-chassis *::after{ box-sizing:border-box; }
+
+.sh-chassis{
+  position:relative;
+  isolation:isolate;
+  display:flex;
+  flex-direction:column;
+  width:100%;
+  min-width:0;
+  border:1px solid var(--chassis-edge);
+  border-radius:14px;
+  font-family:Inter,system-ui,sans-serif;
+  font-variant-numeric:tabular-nums;
+  color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+  background:
+    repeating-linear-gradient(0deg,
+      rgba(255,255,255,.35) 0px, rgba(255,255,255,.35) 1px,
+      rgba(255,255,255,0) 1px, rgba(255,255,255,0) 3px),
+    repeating-linear-gradient(0deg,
+      rgba(0,0,0,.045) 0px, rgba(0,0,0,.045) 1px,
+      rgba(0,0,0,0) 1px, rgba(0,0,0,0) 5px),
+    linear-gradient(180deg,
+      var(--chassis-hi) 0%,
+      var(--chassis) 48%,
+      var(--chassis-lo) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.9),
+    inset 0 -1px 0 rgba(0,0,0,.18),
+    inset 1px 0 0 rgba(255,255,255,.34),
+    inset -1px 0 0 rgba(0,0,0,.09),
+    0 1px 0 rgba(255,255,255,.5),
+    0 2px 5px rgba(0,0,0,.16),
+    0 22px 46px -14px rgba(0,0,0,.42);
+}
+
+/* soft studio-light sweep across the brushed face */
+.sh-chassis::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  border-radius:inherit;
+  background:
+    radial-gradient(130% 58% at 50% -14%, rgba(255,255,255,.55), rgba(255,255,255,0) 62%),
+    linear-gradient(100deg,
+      rgba(255,255,255,0) 18%,
+      rgba(255,255,255,.26) 41%,
+      rgba(255,255,255,0) 61%);
+}
+
+.sh-chassis button{
+  margin:0;
+  padding:0;
+  border:0;
+  background:none;
+  font:inherit;
+  color:inherit;
+  line-height:1;
+  cursor:pointer;
+  -webkit-appearance:none;
+  appearance:none;
+}
+.sh-chassis :focus-visible{
+  outline:2px solid var(--cyan);
+  outline-offset:3px;
+  border-radius:6px;
+}
+
+/* ============ header ============ */
+.sh-header{
+  position:relative;
+  z-index:1;
+  display:flex;
+  flex-wrap:nowrap;
+  align-items:center;
+  gap:20px;
+  height:92px;
+  padding:0 26px;
+}
+
+/* --- left: wordmark --- */
+.sh-brand{
+  flex:1 1 0;
+  min-width:min-content;
+  display:flex;
+  flex-direction:column;
+  gap:9px;
+}
+.sh-wordmark{
+  font-size:34px;
+  font-weight:200;
+  line-height:1;
+  letter-spacing:.42em;
+  margin-right:-.42em;
+  color:var(--ink);
+  white-space:nowrap;
+}
+.sh-subword{
+  font-size:9.5px;
+  font-weight:500;
+  line-height:1.2;
+  letter-spacing:.28em;
+  margin-right:-.28em;
+  text-transform:uppercase;
+  color:var(--ink2);
+}
+
+/* --- centre: preset capsule --- */
+.sh-preset{
+  flex:0 1 auto;
+  display:flex;
+  align-items:center;
+  gap:2px;
+  height:56px;
+  min-width:480px;
+  max-width:100%;
+  padding:0 6px;
+  border-radius:999px;
+  background:linear-gradient(180deg,#1A1E24,#0E1116);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.08),
+    inset 0 3px 9px rgba(0,0,0,.62),
+    inset 0 -1px 0 rgba(255,255,255,.04),
+    0 1px 0 rgba(255,255,255,.72),
+    0 8px 16px -8px rgba(0,0,0,.5);
+}
+.sh-preset-nav{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:44px;
+  height:44px;
+  border-radius:999px;
+  color:var(--on-dark2);
+  transition:color .15s ease, background-color .15s ease;
+}
+.sh-preset-nav:hover{
+  color:var(--on-dark);
+  background:rgba(255,255,255,.05);
+}
+.sh-preset-nav svg{ width:28px; height:28px; display:block; }
+
+.sh-preset-core{
+  flex:1 1 auto;
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:0 4px;
+}
+.sh-preset-pad{ flex:0 0 16px; }
+.sh-preset-text{
+  flex:1 1 auto;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:5px;
+  text-align:center;
+}
+.sh-preset-name{
+  max-width:100%;
+  font-size:17px;
+  font-weight:500;
+  line-height:1;
+  color:var(--cyan);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.sh-preset-tags{
+  max-width:100%;
+  font-size:8.5px;
+  font-weight:500;
+  line-height:1;
+  letter-spacing:.22em;
+  margin-right:-.22em;
+  text-transform:uppercase;
+  color:var(--on-dark2);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.sh-fav{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:16px;
+  height:16px;
+  color:var(--on-dark2);
+  transition:color .15s ease;
+}
+.sh-fav:hover{ color:var(--on-dark); }
+.sh-fav svg{ width:16px; height:16px; display:block; }
+
+/* --- right: tools --- */
+.sh-tools{
+  flex:1 1 0;
+  min-width:min-content;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:22px;
+}
+.sh-gear{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:20px;
+  height:20px;
+  color:var(--ink2);
+  transition:color .15s ease;
+}
+.sh-gear:hover{ color:var(--ink); }
+.sh-gear svg{ width:20px; height:20px; display:block; }
+
+.sh-ab{
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+.sh-ab-slot{
+  position:relative;
+  font-size:15px;
+  font-weight:500;
+  line-height:1;
+  color:var(--ink3);
+  padding-bottom:2px;
+  transition:color .15s ease;
+}
+.sh-ab-slot:hover{ color:var(--ink2); }
+.sh-ab-on,.sh-ab-slot.is-on{ color:var(--ink); }
+.sh-ab-on:hover,.sh-ab-slot.is-on:hover{ color:var(--ink); }
+.sh-ab-on::after,.sh-ab-slot.is-on::after{
+  content:"";
+  position:absolute;
+  left:-1px;
+  right:-1px;
+  bottom:-5px;
+  height:2px;
+  border-radius:1px;
+  background:var(--amber);
+  box-shadow:0 0 6px rgba(255,158,44,.45);
+}
+
+.sh-vendor{
+  font-size:9px;
+  font-weight:500;
+  line-height:1;
+  letter-spacing:.2em;
+  margin-right:-.2em;
+  text-transform:uppercase;
+  color:var(--ink3);
+  padding-bottom:7px;
+  border-bottom:1px solid rgba(0,0,0,.15);
+  white-space:nowrap;
+}
+
+/* ============ body mount ============ */
+.sh-chassis > #mount-body{
+  position:relative;
+  z-index:1;
+  flex:1 1 auto;
+  min-width:0;
+  padding:0 26px 20px;
+}
+
+/* ============ footer ============ */
+.sh-footer{
+  position:relative;
+  z-index:1;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:center;
+  gap:16px;
+  height:44px;
+  padding:0 20px;
+  border-top:1px solid rgba(255,255,255,.5);
+  border-radius:0 0 13px 13px;
+  background:
+    repeating-linear-gradient(0deg,
+      rgba(255,255,255,.22) 0px, rgba(255,255,255,.22) 1px,
+      rgba(255,255,255,0) 1px, rgba(255,255,255,0) 3px),
+    linear-gradient(180deg, var(--panel-lo), var(--chassis-lo));
+  box-shadow:inset 0 -1px 0 rgba(0,0,0,.1);
+}
+.sh-footer-line,
+.sh-footer-slash{
+  font-size:10px;
+  font-weight:500;
+  line-height:1;
+  letter-spacing:.3em;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+.sh-footer-line{ color:var(--ink2); }
+.sh-footer-slash{ color:var(--ink3); }
+
+/* ============ responsive ============ */
+@media (max-width:1060px){
+  .sh-preset{ min-width:340px; }
+}
+@media (max-width:820px){
+  .sh-header{ gap:16px; padding:0 18px; }
+  .sh-preset{ min-width:260px; }
+  .sh-tools{ gap:16px; }
+  .sh-chassis > #mount-body{ padding:0 18px 16px; }
+}
+@media (max-width:720px){
+  .sh-header{
+    flex-wrap:wrap;
+    height:auto;
+    padding:18px 16px;
+    row-gap:16px;
+    column-gap:14px;
+  }
+  .sh-brand{ order:0; flex:1 1 auto; }
+  .sh-tools{ order:1; flex:0 1 auto; gap:16px; }
+  .sh-preset{
+    order:2;
+    flex:1 1 100%;
+    width:100%;
+    min-width:0;
+  }
+  .sh-wordmark{ font-size:26px; letter-spacing:.34em; margin-right:-.34em; }
+  .sh-subword{ font-size:8px; letter-spacing:.2em; margin-right:-.2em; }
+  .sh-chassis > #mount-body{ padding:0 16px 16px; }
+  .sh-footer{ height:auto; min-height:44px; padding:13px 16px; gap:10px 14px; }
+  .sh-footer-line,
+  .sh-footer-slash{ font-size:9px; letter-spacing:.26em; }
+}
+@media (prefers-reduced-motion:reduce){
+  .sh-chassis *{ transition:none !important; }
+}
+
+/* ---- dark graph well, inset into the brushed chassis ---- */
+.sh-graphwrap{
+  margin: 0 20px 16px;
+  border-radius: 12px;
+  padding: 3px;
+  /* the milled bezel around the display: dark groove, bright lower lip */
+  background: linear-gradient(180deg,#9AA1A9 0%, #C6CCD2 55%, #EDEFF1 100%);
+  box-shadow:
+    inset 0 2px 4px rgba(0,0,0,.38),
+    0 1px 0 rgba(255,255,255,.75);
+}
+.sh-graph{
+  position: relative;
+  border-radius: 10px;
+  background: linear-gradient(180deg, var(--well-bg2) 0%, var(--well-bg) 68%);
+  box-shadow:
+    inset 0 1px 12px rgba(0,0,0,.85),
+    inset 0 0 0 1px rgba(255,255,255,.045);
+  overflow: hidden;
+  height: 396px;
+}
+#shape-graph{ display:block; width:100%; height:100%; touch-action:none; cursor:crosshair; }
+
+/* ---- toolbar overlay, floating on the display ---- */
+.sh-gbar{
+  position:absolute; top:12px; left:14px; right:14px;
+  display:flex; align-items:center; gap:10px;
+  pointer-events:none;
+}
+.sh-gbar > *{ pointer-events:auto; }
+.sh-gbar-sp{ margin-left:auto; }
+
+.sh-tabs, .sh-anbtns{ display:flex; align-items:center; gap:4px; }
+
+/* a button that sits on the dark display */
+.sh-dbtn{
+  font: 500 10px/1 Inter, system-ui, sans-serif;
+  letter-spacing:.14em; text-transform:uppercase;
+  color: var(--on-dark2);
+  background: rgba(255,255,255,.045);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 7px;
+  padding: 8px 13px;
+  cursor:pointer;
+  transition: color 130ms ease, background 130ms ease, border-color 130ms ease, box-shadow 130ms ease;
+  white-space:nowrap;
+}
+.sh-dbtn:hover{ color: var(--on-dark); background: rgba(255,255,255,.08); }
+.sh-dbtn[aria-pressed="true"]{
+  color: var(--amber);
+  background: linear-gradient(180deg,#2A2118,#1A140E);
+  border-color: rgba(255,158,44,.55);
+  box-shadow: 0 0 0 1px rgba(255,158,44,.35), 0 0 12px rgba(255,158,44,.28);
+}
+.sh-dbtn:focus-visible{ outline:2px solid var(--cyan); outline-offset:2px; }
+
+/* the ANALYZER master toggle carries a dot, like the DYNAMIC pill */
+.sh-dbtn--dot{ display:inline-flex; align-items:center; gap:7px; }
+.sh-dbtn--dot::before{
+  content:""; width:6px; height:6px; border-radius:999px;
+  background: transparent; border:1px solid currentColor; flex:none;
+  transition: all 130ms ease;
+}
+.sh-dbtn--dot[aria-pressed="true"]::before{
+  background: var(--amber); border-color: var(--amber);
+  box-shadow: 0 0 6px rgba(255,158,44,.9);
+}
+
+@media (max-width: 860px){
+  .sh-graph{ height: 320px; }
+  .sh-gbar{ top:10px; left:10px; right:10px; gap:6px; flex-wrap:wrap; }
+  .sh-dbtn{ padding:7px 10px; letter-spacing:.1em; }
+}
+@media (max-width: 620px){
+  .sh-graphwrap{ margin: 0 12px 12px; }
+  .sh-graph{ height: 262px; }
+  .sh-gbar-sp{ margin-left:0; }
+  .sh-gbar{ position:static; padding:10px 10px 0; }
+}
+
+/* ==========================================================================
+   SHAPE — controls: metal knob, filter-shape buttons, pill toggle, segmented
+   All selectors are namespaced `.sh-`.
+   ========================================================================== */
+
+.sh-knob,
+.sh-shapes,
+.sh-shape-btn,
+.sh-pill,
+.sh-seg,
+.sh-seg-btn{
+  --cyan:#45C2F0;
+  --amber:#FF9E2C;
+  --violet:#9B7BF0;
+  --ink:#262B33;
+  --ink2:#5B636D;
+
+  --sh-sans: var(--sans, Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+
+  --sh-light-face: linear-gradient(180deg,#E8EBEE,#D6DBE0);
+  --sh-dark-face:  linear-gradient(180deg,#2A2E35,#191D23);
+  --sh-amber-ring: 0 0 0 1px rgba(255,158,44,.7), 0 0 10px rgba(255,158,44,.35);
+
+  box-sizing:border-box;
+}
+.sh-knob *,
+.sh-shapes *,
+.sh-pill *,
+.sh-seg *{ box-sizing:border-box; }
+
+/* --------------------------------------------------------------------------
+   1. The knob
+   -------------------------------------------------------------------------- */
+
+.sh-knob{
+  --sh-accent:var(--cyan);
+  --sh-body:52px;          /* knob body diameter                */
+  --sh-box:70px;           /* dial field: body + arc + tick ring */
+  --sh-ind-w:2px;
+  --sh-ind-h:13px;
+  --sh-ind-top:3px;
+
+  width:96px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  font-family:var(--sh-sans);
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+
+.sh-knob--lg{
+  --sh-body:72px;
+  --sh-box:94px;
+  --sh-ind-w:2.5px;
+  --sh-ind-h:18px;
+  --sh-ind-top:4px;
+}
+
+.sh-knob--cyan  { --sh-accent:var(--cyan);   }
+.sh-knob--amber { --sh-accent:var(--amber);  }
+.sh-knob--violet{ --sh-accent:var(--violet); }
+
+/* the interactive field ----------------------------------------------------*/
+.sh-knob-dial{
+  position:relative;
+  width:var(--sh-box);
+  height:var(--sh-box);
+  border-radius:50%;
+  cursor:ns-resize;
+  touch-action:none;
+  outline:none;
+}
+.sh-knob-dial:focus-visible{
+  outline:2px solid var(--sh-accent);
+  outline-offset:1px;
+}
+.sh-knob--active .sh-knob-dial{ cursor:grabbing; }
+
+/* ticks + value arc --------------------------------------------------------*/
+.sh-knob-svg{
+  position:absolute;
+  inset:0;
+  overflow:visible;
+  pointer-events:none;
+  display:block;
+}
+.sh-knob-ticks line{
+  stroke:rgba(0,0,0,.28);
+  stroke-linecap:butt;
+}
+.sh-knob-arc,
+.sh-knob-arc-glow,
+.sh-knob-arc-bloom{
+  fill:none;
+  stroke:var(--sh-accent);
+  stroke-linecap:round;
+}
+.sh-knob-arc-bloom{ opacity:.42; }
+.sh-knob-arc-glow { opacity:.13; }
+
+/* accent light bouncing off the chassis around the base --------------------*/
+.sh-knob-halo{
+  position:absolute;
+  inset:-6px;
+  border-radius:50%;
+  pointer-events:none;
+  background:radial-gradient(circle closest-side, var(--sh-accent) 58%, rgba(0,0,0,0) 76%);
+  opacity:.06;
+  filter:blur(7px);
+}
+.sh-knob-dial:hover .sh-knob-halo,
+.sh-knob--active .sh-knob-halo{ opacity:.12; }
+
+/* the machined body --------------------------------------------------------*/
+.sh-knob-body{
+  position:absolute;
+  left:50%; top:50%;
+  width:var(--sh-body);
+  height:var(--sh-body);
+  margin:calc(var(--sh-body) / -2) 0 0 calc(var(--sh-body) / -2);
+  border-radius:50%;
+  isolation:isolate;
+  background:radial-gradient(circle at 38% 30%,
+      #FCFCFD 0%,
+      #E4E7EA 30%,
+      #BFC5CB 62%,
+      #9AA1A9 88%,
+      #C3C9CF 100%);
+  box-shadow:
+      0 0 0 1px rgba(0,0,0,.30),
+      0 2px 5px rgba(0,0,0,.30),
+      0 6px 12px rgba(0,0,0,.10),
+      inset 0 1px 1px rgba(255,255,255,.85),
+      inset 0 -2px 3px rgba(0,0,0,.16),
+      inset 0 0 9px rgba(84,93,105,.26);   /* pulls the dome flat, as a machined face is */
+}
+
+/* micro grain — the anodised tooth of the metal */
+.sh-knob-body::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:1;
+  border-radius:50%;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='90' height='90'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='90' height='90' filter='url(%23n)'/></svg>");
+  background-size:90px 90px;
+  mix-blend-mode:overlay;
+  opacity:.42;
+  -webkit-mask:radial-gradient(circle closest-side,
+      rgba(0,0,0,.45) 0 12%, #000 34%, #000 84%, rgba(0,0,0,.55) 100%);
+  mask:radial-gradient(circle closest-side,
+      rgba(0,0,0,.45) 0 12%, #000 34%, #000 84%, rgba(0,0,0,.55) 100%);
+}
+
+/* the circular lay left by the lathe, only where it can resolve cleanly */
+.sh-knob-lay{
+  position:absolute;
+  inset:0;
+  z-index:2;
+  border-radius:50%;
+  pointer-events:none;
+  background:repeating-conic-gradient(from 0deg,
+      rgba(255,255,255,.95) 0deg .55deg,
+      rgba(255,255,255,0)   .55deg 1.20deg,
+      rgba(0,0,0,.95)       1.20deg 1.75deg,
+      rgba(0,0,0,0)         1.75deg 2.55deg);
+  mix-blend-mode:overlay;
+  opacity:.15;
+  -webkit-mask:radial-gradient(circle closest-side,
+      rgba(0,0,0,0) 0 48%, #000 74%, #000 88%, rgba(0,0,0,.40) 100%);
+  mask:radial-gradient(circle closest-side,
+      rgba(0,0,0,0) 0 48%, #000 74%, #000 88%, rgba(0,0,0,.40) 100%);
+}
+
+/* anisotropic glint riding the rim */
+.sh-knob-body::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:3;
+  border-radius:50%;
+  background:conic-gradient(from 196deg,
+      rgba(255,255,255,0)   0deg,
+      rgba(255,255,255,.62) 40deg,
+      rgba(255,255,255,0)   94deg,
+      rgba(0,0,0,.26)       168deg,
+      rgba(255,255,255,0)   238deg,
+      rgba(255,255,255,.20) 302deg,
+      rgba(255,255,255,0)   344deg);
+  -webkit-mask:radial-gradient(circle closest-side,
+      rgba(0,0,0,0) 0 78%, #000 90%, #000 100%);
+  mask:radial-gradient(circle closest-side,
+      rgba(0,0,0,0) 0 78%, #000 90%, #000 100%);
+}
+
+/* indicator ---------------------------------------------------------------*/
+.sh-knob-rot{
+  position:absolute;
+  inset:0;
+  z-index:4;
+  transform:rotate(-135deg);
+  will-change:transform;
+}
+.sh-knob-ind{
+  position:absolute;
+  left:50%;
+  top:var(--sh-ind-top);
+  width:var(--sh-ind-w);
+  height:var(--sh-ind-h);
+  margin-left:calc(var(--sh-ind-w) / -2);
+  border-radius:calc(var(--sh-ind-w) / 2);
+  background:#2A2F36;
+  box-shadow:.5px .5px 0 rgba(255,255,255,.45);
+}
+
+/* label + readout ---------------------------------------------------------*/
+.sh-knob-label{
+  margin-top:9px;
+  font-size:9.5px;
+  font-weight:500;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--ink2);
+  white-space:nowrap;
+  text-align:center;
+}
+.sh-knob-value{
+  margin-top:3px;
+  font-size:13.5px;
+  font-weight:500;
+  color:var(--ink);
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+  text-align:center;
+}
+
+/* large variant: a three-stop scale instead of the label / readout stack ---*/
+.sh-knob-scale{
+  margin-top:8px;
+  width:calc(var(--sh-body) + 6px);
+  display:flex;
+  justify-content:space-between;
+  font-size:9px;
+  font-weight:500;
+  letter-spacing:.04em;
+  color:var(--ink2);
+  font-variant-numeric:tabular-nums;
+}
+.sh-knob-scale span{ line-height:1; }
+.sh-knob-scale span:nth-child(2){ transform:translateX(.5px); }
+
+@media (prefers-reduced-motion: no-preference){
+  .sh-knob:not(.sh-knob--active) .sh-knob-rot{
+    transition:transform 110ms cubic-bezier(.22,.61,.36,1);
+  }
+  .sh-knob-halo{ transition:opacity 140ms ease; }
+}
+
+/* --------------------------------------------------------------------------
+   2A. Filter-shape icon buttons
+   -------------------------------------------------------------------------- */
+
+.sh-shapes{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:5px;
+  border-radius:10px;
+  background:linear-gradient(180deg,#F3F5F7,#E7EAEE);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.85), 0 0 0 1px rgba(0,0,0,.07);
+}
+.sh-shape-btn{
+  width:34px;
+  height:34px;
+  padding:0;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:7px;
+  border:1px solid rgba(0,0,0,.14);
+  background:var(--sh-light-face);
+  color:var(--ink2);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.75), 0 1px 1px rgba(0,0,0,.07);
+  cursor:pointer;
+  outline:none;
+  -webkit-appearance:none;
+  appearance:none;
+}
+.sh-shape-btn svg{ display:block; width:22px; height:16px; }
+.sh-shape-btn svg path{
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.6;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  vector-effect:non-scaling-stroke;
+}
+.sh-shape-btn:hover{ background:linear-gradient(180deg,#EDEFF2,#DCE1E6); }
+.sh-shape-btn:focus-visible{ box-shadow:0 0 0 2px rgba(69,194,240,.75); }
+.sh-shape-btn.sh-on{
+  background:var(--sh-dark-face);
+  border-color:rgba(0,0,0,.55);
+  color:var(--amber);
+  box-shadow:var(--sh-amber-ring), inset 0 1px 0 rgba(255,255,255,.09);
+}
+
+/* --------------------------------------------------------------------------
+   2B. Amber pill toggle
+   -------------------------------------------------------------------------- */
+
+.sh-pill{
+  height:30px;
+  padding:0 16px;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  border-radius:999px;
+  border:1px solid rgba(0,0,0,.14);
+  background:var(--sh-light-face);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.75), 0 1px 1px rgba(0,0,0,.07);
+  font-family:var(--sh-sans);
+  font-size:10px;
+  font-weight:500;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--ink2);
+  white-space:nowrap;
+  cursor:pointer;
+  outline:none;
+  -webkit-appearance:none;
+  appearance:none;
+}
+.sh-pill-dot{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  flex:0 0 auto;
+  background:transparent;
+  box-shadow:inset 0 0 0 1.5px currentColor;
+}
+.sh-pill:hover{ background:linear-gradient(180deg,#EDEFF2,#DCE1E6); }
+.sh-pill:focus-visible{ box-shadow:0 0 0 2px rgba(69,194,240,.75); }
+.sh-pill.sh-on{
+  background:var(--sh-dark-face);
+  border-color:rgba(0,0,0,.55);
+  color:var(--amber);
+  box-shadow:var(--sh-amber-ring), inset 0 1px 0 rgba(255,255,255,.09);
+}
+.sh-pill.sh-on .sh-pill-dot{
+  background:var(--amber);
+  box-shadow:0 0 6px var(--amber);
+}
+
+/* --------------------------------------------------------------------------
+   2C. Segmented selector
+   -------------------------------------------------------------------------- */
+
+.sh-seg{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+}
+.sh-seg-btn{
+  height:32px;
+  padding:0 18px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:7px;
+  border:1px solid rgba(0,0,0,.14);
+  background:var(--sh-light-face);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.75), 0 1px 1px rgba(0,0,0,.07);
+  font-family:var(--sh-sans);
+  font-size:10px;
+  font-weight:500;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--ink2);
+  white-space:nowrap;
+  cursor:pointer;
+  outline:none;
+  -webkit-appearance:none;
+  appearance:none;
+}
+.sh-seg-btn:hover{ background:linear-gradient(180deg,#EDEFF2,#DCE1E6); }
+.sh-seg-btn:focus-visible{ box-shadow:0 0 0 2px rgba(69,194,240,.75); }
+.sh-seg-btn.sh-on{
+  background:var(--sh-dark-face);
+  border-color:rgba(0,0,0,.55);
+  color:var(--amber);
+  box-shadow:var(--sh-amber-ring), inset 0 1px 0 rgba(255,255,255,.09);
+}
+
+@media (prefers-reduced-motion: no-preference){
+  .sh-shape-btn,
+  .sh-pill,
+  .sh-pill-dot,
+  .sh-seg-btn{ transition:background 120ms ease, color 120ms ease, box-shadow 140ms ease, border-color 120ms ease; }
+}
+
+/* ============================================================
+   SHAPE — Row 1 (band strip) + Row 2 (bottom bar)
+   All selectors namespaced with .sh-
+   ============================================================ */
+
+.sh-bandstrip,
+.sh-bottombar{
+  --chassis-hi:#F2F4F6;
+  --chassis:#D4D8DD;
+  --chassis-lo:#AEB4BB;
+  --panel-hi:#E2E5E9;
+  --panel:#D0D5DA;
+  --panel-lo:#BCC2C9;
+  --ink:#262B33;
+  --ink2:#5B636D;
+  --ink3:#878F99;
+  --amber:#FF9E2C;
+  --cyan:#45C2F0;
+  --violet:#9B7BF0;
+
+  --sh-knob-w:56px;
+  --sh-knob-h:76px;
+  --sh-knob-w-lg:74px;
+  --sh-knob-h-lg:96px;
+
+  font-family:Inter, system-ui, sans-serif;
+  -webkit-font-smoothing:antialiased;
+  max-width:100%;
+}
+
+.sh-bandstrip,
+.sh-bandstrip *,
+.sh-bottombar,
+.sh-bottombar *{ box-sizing:border-box; }
+
+
+/* ------------------------------------------------------------
+   Shared: milled groove divider
+   ------------------------------------------------------------ */
+.sh-divider{
+  flex:0 0 1px;
+  width:1px;
+  align-self:stretch;
+  position:relative;
+  margin:0 18px;
+  background:linear-gradient(180deg,transparent,rgba(0,0,0,.18),transparent);
+}
+.sh-divider::after{
+  content:"";
+  position:absolute;
+  top:0; left:1px;
+  width:1px; height:100%;
+  background:linear-gradient(180deg,transparent,rgba(255,255,255,.6),transparent);
+}
+.sh-divider--bar{
+  margin:0 26px;
+  min-height:72px;
+}
+
+
+/* ------------------------------------------------------------
+   Shared: mount-point reservations (filled by other components)
+   ------------------------------------------------------------ */
+.sh-knobmount{
+  flex:0 0 auto;
+  width:var(--sh-knob-w);
+  min-height:var(--sh-knob-h);
+}
+.sh-knobmount[data-size="lg"]{
+  width:var(--sh-knob-w-lg);
+  min-height:var(--sh-knob-h-lg);
+}
+.sh-bandstrip .sh-shapebtns{ min-height:30px; min-width:0; }
+.sh-pillmount{ min-height:26px; min-width:96px; }
+.sh-segmount{ min-height:30px; min-width:148px; max-width:100%; }
+
+
+/* ============================================================
+   ROW 1 — THE BAND STRIP
+   ============================================================ */
+.sh-bandstrip{
+  display:flex;
+  align-items:stretch;
+  column-gap:0;
+  row-gap:14px;
+  padding:16px 20px;
+  border-radius:10px;
+  background:linear-gradient(180deg,var(--panel-hi),var(--panel));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.85),
+    inset 0 -1px 0 rgba(0,0,0,.06),
+    0 1px 2px rgba(0,0,0,.10),
+    0 4px 10px rgba(0,0,0,.09);
+}
+
+/* (a) band identity column ---------------------------------- */
+.sh-bandid{
+  flex:0 0 150px;
+  width:150px;
+  min-width:0;
+  margin-right:18px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.sh-bandid-top{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+}
+
+.sh-dot{
+  flex:0 0 auto;
+  width:7px; height:7px;
+  border-radius:50%;
+  background:var(--amber);
+  box-shadow:
+    0 0 5px rgba(255,158,44,.95),
+    0 0 12px rgba(255,158,44,.45);
+}
+
+.sh-bandlabel{
+  min-width:0;
+  font-size:12px;
+  font-weight:500;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:var(--ink);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.sh-chevrons{
+  margin-left:auto;
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  gap:2px;
+}
+.sh-chev{
+  appearance:none;
+  -webkit-appearance:none;
+  border:0;
+  padding:0;
+  background:none;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:22px; height:22px;
+  color:var(--ink3);
+  border-radius:5px;
+  transition:color .12s ease, background-color .12s ease;
+}
+.sh-chev:hover{ color:var(--ink); background:rgba(255,255,255,.5); }
+.sh-chev:active{ background:rgba(0,0,0,.05); }
+.sh-chev svg{ display:block; width:22px; height:22px; }
+
+/* select --------------------------------------------------- */
+.sh-select{
+  appearance:none;
+  -webkit-appearance:none;
+  -moz-appearance:none;
+  width:100%;
+  min-width:0;
+  height:34px;
+  padding:0 30px 0 12px;
+  border-radius:7px;
+  border:1px solid rgba(0,0,0,.16);
+  font-family:inherit;
+  font-size:12px;
+  font-weight:500;
+  color:var(--ink);
+  cursor:pointer;
+  outline:none;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.85),
+    0 1px 1px rgba(0,0,0,.06);
+  background-image:
+    linear-gradient(45deg,transparent 50%,var(--ink2) 50%),
+    linear-gradient(135deg,var(--ink2) 50%,transparent 50%),
+    linear-gradient(180deg,var(--panel-hi),var(--panel));
+  background-position:
+    calc(100% - 18px) calc(50% - 1px),
+    calc(100% - 13px) calc(50% - 1px),
+    0 0;
+  background-size:5px 5px, 5px 5px, 100% 100%;
+  background-repeat:no-repeat, no-repeat, no-repeat;
+  transition:border-color .12s ease, box-shadow .12s ease;
+}
+.sh-select:hover{ border-color:rgba(0,0,0,.24); }
+.sh-select:focus-visible{
+  border-color:rgba(255,158,44,.75);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.85),
+    0 0 0 2px rgba(255,158,44,.28);
+}
+
+/* (b) core knob group --------------------------------------- */
+.sh-knobgroup{
+  flex:0 0 auto;
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+}
+
+/* (d) dynamic group ----------------------------------------- */
+.sh-dyngroup{
+  flex:0 1 auto;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:12px;
+}
+.sh-dynknobs{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+}
+
+/* (e) right-hand button column ------------------------------ */
+.sh-btncol{
+  margin-left:auto;
+  flex:0 0 auto;
+  width:62px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:9px;
+}
+
+.sh-minibtn{
+  appearance:none;
+  -webkit-appearance:none;
+  width:100%;
+  height:34px;
+  padding:0;
+  border-radius:8px;
+  border:1px solid rgba(0,0,0,.16);
+  background:linear-gradient(180deg,var(--panel-hi),var(--panel));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.85),
+    0 1px 2px rgba(0,0,0,.10);
+  font-family:inherit;
+  font-size:10px;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  color:var(--ink2);
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:color .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
+}
+.sh-minibtn:hover{ color:var(--ink); border-color:rgba(0,0,0,.22); }
+.sh-minibtn:active{
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.16);
+  background:linear-gradient(180deg,var(--panel),var(--panel-lo));
+}
+.sh-minibtn.is-on{
+  background:linear-gradient(180deg,#333A44,#1E232B);
+  border-color:rgba(0,0,0,.55);
+  color:var(--amber);
+  text-shadow:0 0 8px rgba(255,158,44,.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    inset 0 0 0 1px rgba(255,158,44,.42),
+    0 0 10px rgba(255,158,44,.38),
+    0 1px 2px rgba(0,0,0,.28);
+}
+
+.sh-powerbtn{
+  appearance:none;
+  -webkit-appearance:none;
+  flex:0 0 auto;
+  width:38px; height:38px;
+  padding:0;
+  border-radius:50%;
+  border:1px solid rgba(0,0,0,.16);
+  background:linear-gradient(180deg,var(--panel-hi),var(--panel));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.85),
+    0 1px 2px rgba(0,0,0,.10);
+  color:var(--ink2);
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:color .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
+}
+.sh-powerbtn:hover{ color:var(--ink); border-color:rgba(0,0,0,.22); }
+.sh-powerbtn:active{
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.16);
+  background:linear-gradient(180deg,var(--panel),var(--panel-lo));
+}
+.sh-powerbtn svg{ display:block; width:19px; height:19px; }
+.sh-powerbtn.is-on{
+  color:var(--amber);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.85),
+    inset 0 0 0 1px rgba(255,158,44,.40),
+    0 0 12px rgba(255,158,44,.45),
+    0 1px 2px rgba(0,0,0,.12);
+}
+.sh-powerbtn.is-on svg{ filter:drop-shadow(0 0 5px rgba(255,158,44,.75)); }
+
+
+/* ============================================================
+   ROW 2 — THE BOTTOM BAR (milled straight into the chassis)
+   ============================================================ */
+.sh-bottombar{
+  display:flex;
+  align-items:center;
+  padding:18px 26px;
+  background:transparent;
+  border-top:1px solid rgba(0,0,0,.10);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55);
+}
+
+.sh-cap{
+  display:block;
+  margin-bottom:8px;
+  font-size:10px;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.18em;
+  color:var(--ink2);
+  white-space:nowrap;
+}
+
+.sh-iocell{
+  flex:0 0 auto;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.sh-segzone{
+  flex:1 1 auto;
+  min-width:0;
+  display:flex;
+  align-items:center;
+  justify-content:space-around;
+  flex-wrap:wrap;
+  gap:14px 20px;
+}
+
+.sh-segcell{
+  flex:0 1 auto;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width:900px){
+  .sh-bandstrip{ flex-wrap:wrap; }
+  .sh-bandid   { order:1; }
+  .sh-knobgroup{ order:2; }
+  .sh-bandstrip > .sh-divider{ order:3; }
+  .sh-btncol{
+    order:4;
+    width:auto;
+    flex-direction:row;
+    align-items:center;
+    gap:9px;
+  }
+  .sh-btncol .sh-minibtn{ width:62px; }
+  .sh-dyngroup{
+    order:5;
+    flex:1 1 100%;
+    width:100%;
+  }
+
+  /* bottom bar: INPUT / OUTPUT hold the line, selectors drop beneath */
+  .sh-bottombar{ flex-wrap:wrap; row-gap:18px; }
+  .sh-bottombar > .sh-divider--bar{ display:none; }
+  .sh-iocell--in { order:1; }
+  .sh-iocell--out{ order:2; margin-left:auto; }
+  .sh-segzone{
+    order:3;
+    flex:1 1 100%;
+    width:100%;
+  }
+}
+
+@media (max-width:720px){
+  .sh-bandstrip{ padding:14px 16px; }
+
+  /* knob mounts: two per line */
+  .sh-knobgroup,
+  .sh-dynknobs{
+    flex-wrap:wrap;
+    max-width:calc(var(--sh-knob-w) * 2 + 12px);
+  }
+
+  .sh-bandid{ margin-right:14px; }
+
+  /* dividers are milled away */
+  .sh-divider{ display:none; }
+
+  .sh-bottombar{
+    flex-direction:column;
+    align-items:center;
+    gap:20px;
+    padding:18px 16px;
+  }
+  .sh-iocell--in { order:1; }
+  .sh-iocell--out{ order:3; margin-left:0; }
+  .sh-segzone{
+    order:2;
+    width:100%;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:18px 24px;
+  }
+}
+
+/* ---- integration overrides (last, so they win) ----
+   Each reconciles two parts that were authored independently. */
+
+/* The chassis already gutters #mount-body; the graph must not add its own. */
+.sh-chassis > #mount-body > .sh-graphwrap{ margin-left:0; margin-right:0; }
+
+/* Knob mounts reserved 56px before the knob's real cell width was known.
+   Let the knob size the mount instead of clipping it. */
+.sh-knobmount{ width:auto !important; min-width:0 !important; }
+.sh-knobgroup, .sh-dynknobs{ max-width:none !important; flex-wrap:wrap; }
+
+/* Disabled knobs: the wiring marks controls that do nothing for this
+   filter type, rather than offering them. */
+.sh-knob.is-disabled{ opacity:.32; pointer-events:none; }
+
+/* Keep the whole instrument off the horizontal scrollbar. */
+.sh-chassis, .sh-bandstrip, .sh-bottombar{ max-width:100%; }
+
+/* --- cascade repair ---
+   The chassis part resets .sh-chassis button (0,1,1), which outranks the
+   other parts' single-class button rules (0,1,0) and was stripping their
+   padding, border and background. Restore them at (0,2,0). The .sh-on
+   states already outrank the reset, so only the base needs re-asserting. */
+.sh-chassis .sh-dbtn{
+  padding:8px 13px;
+  border:1px solid rgba(255,255,255,.07);
+  background:rgba(255,255,255,.045);
+  border-radius:7px;
+  /* the reset's color:inherit was handing these dark chassis ink on a
+     near-black panel, which made the inactive labels unreadable */
+  color:#98A1AC;
+}
+.sh-chassis .sh-dbtn:hover{ background:rgba(255,255,255,.09); color:#C8CFD8; }
+.sh-chassis .sh-dbtn[aria-pressed="true"]{ color:#FF9E2C; }
+
+.sh-chassis .sh-seg-btn{
+  height:32px; padding:0 18px; border-radius:7px;
+  border:1px solid rgba(0,0,0,.14);
+  background:linear-gradient(180deg,#F2F4F6,#D9DEE3);
+}
+.sh-chassis .sh-pill{
+  height:30px; padding:0 16px; border-radius:999px;
+  border:1px solid rgba(0,0,0,.14);
+  background:linear-gradient(180deg,#F2F4F6,#D9DEE3);
+}
+.sh-chassis .sh-shape-btn{
+  width:34px; height:34px; padding:0; border-radius:7px;
+  border:1px solid rgba(0,0,0,.14);
+  background:linear-gradient(180deg,#E8EBEE,#D6DBE0);
+}
+.sh-chassis .sh-minibtn,
+.sh-chassis .sh-powerbtn{ padding:0; }
+
+/* The factories mark state with .sh-on; re-assert the dark+amber face at a
+   specificity the reset cannot reach, and keep aria-pressed in step. */
+.sh-chassis .sh-seg-btn.sh-on,
+.sh-chassis .sh-pill.sh-on,
+.sh-chassis .sh-shape-btn.sh-on{
+  background:linear-gradient(180deg,#333A44,#1E232B);
+  border-color:rgba(0,0,0,.55);
+  color:#FF9E2C;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,158,44,.42),
+    inset 0 1px 0 rgba(255,255,255,.09),
+    0 0 10px rgba(255,158,44,.38);
+}
+</style>
+
+<div class="sh-stage">
+<div class="sh-chassis">
+  <header class="sh-header">
+
+    <div class="sh-brand">
+      <div class="sh-wordmark">SHAPE</div>
+      <div class="sh-subword">PRECISION SPECTRAL EQUALIZER</div>
+    </div>
+
+    <div class="sh-preset">
+      <button class="sh-preset-nav" type="button" data-preset="prev" aria-label="Previous preset">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+          <path d="M14.5 5.5 8 12l6.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+
+      <div class="sh-preset-core">
+        <span class="sh-preset-pad" aria-hidden="true"></span>
+        <div class="sh-preset-text">
+          <div class="sh-preset-name" data-preset-name>Master Clean</div>
+          <div class="sh-preset-tags" data-preset-tag>PRECISION · MUSICAL · NATURAL</div>
+        </div>
+        <button class="sh-fav" type="button" data-preset="fav" aria-label="Add preset to favourites" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <button class="sh-preset-nav" type="button" data-preset="next" aria-label="Next preset">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+          <path d="M9.5 5.5 16 12l-6.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="sh-tools">
+      <button class="sh-gear" type="button" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true" focusable="false">
+          <circle cx="12" cy="12" r="5.6"/>
+          <circle cx="12" cy="12" r="2.3"/>
+          <path d="M12 6.4V3.8M12 17.6v2.6M17.6 12h2.6M3.8 12h2.6M15.96 8.04 17.8 6.2M6.2 17.8l1.84-1.84M15.96 15.96 17.8 17.8M6.2 6.2l1.84 1.84"/>
+        </svg>
+      </button>
+
+      <div class="sh-ab">
+        <button class="sh-ab-slot sh-ab-on is-on" type="button" data-slot="A" aria-label="Snapshot A" aria-pressed="true">A</button>
+        <button class="sh-ab-slot" type="button" data-slot="B" aria-label="Snapshot B" aria-pressed="false">B</button>
+      </div>
+
+      <div class="sh-vendor">BY NOVA AUDIO</div>
+    </div>
+
+  </header>
+
+  <div id="mount-body">
+<div class="sh-graphwrap">
+  <div class="sh-graph">
+    <canvas id="shape-graph" aria-label="Equalizer response curve and spectrum analyser"></canvas>
+    <div class="sh-gbar">
+      <div class="sh-tabs" id="sh-tabs" role="group" aria-label="Editor page">
+        <button class="sh-dbtn" data-tab="eq" aria-pressed="true">EQ</button>
+        <button class="sh-dbtn" data-tab="dynamic" aria-pressed="false">Dynamic</button>
+        <button class="sh-dbtn" data-tab="spectral" aria-pressed="false">Spectral</button>
+      </div>
+      <div class="sh-gbar-sp"></div>
+      <div class="sh-anbtns" id="sh-anbtns" role="group" aria-label="Analyser">
+        <button class="sh-dbtn sh-dbtn--dot" id="sh-an-toggle" aria-pressed="true">Analyzer</button>
+        <button class="sh-dbtn" data-an="pre" aria-pressed="true">Pre</button>
+        <button class="sh-dbtn" data-an="post" aria-pressed="false">Post</button>
+        <button class="sh-dbtn" data-an="both" aria-pressed="false">Both</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sh-bandstrip">
+
+  <!-- (a) band identity -->
+  <div class="sh-bandid">
+    <div class="sh-bandid-top">
+      <span class="sh-dot"></span>
+      <span class="sh-bandlabel" data-band-number>BAND 3</span>
+      <span class="sh-chevrons">
+        <button class="sh-chev" type="button" data-band-nav="prev" aria-label="Previous band">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 6.5 9 12l5.5 5.5"/></svg>
+        </button>
+        <button class="sh-chev" type="button" data-band-nav="next" aria-label="Next band">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 6.5 15 12l-5.5 5.5"/></svg>
+        </button>
+      </span>
+    </div>
+
+    <div class="sh-shapebtns"></div>
+
+    <select class="sh-select" aria-label="Filter type">
+      <option selected>Bell</option>
+      <option>Low Shelf</option>
+      <option>High Shelf</option>
+      <option>Low Cut</option>
+      <option>High Cut</option>
+      <option>Notch</option>
+      <option>Band Pass</option>
+      <option>Tilt Shelf</option>
+    </select>
+  </div>
+
+  <!-- (b) core knobs -->
+  <div class="sh-knobgroup">
+    <div class="sh-knobmount" data-knob="frequency"></div>
+    <div class="sh-knobmount" data-knob="gain"></div>
+    <div class="sh-knobmount" data-knob="q"></div>
+  </div>
+
+  <!-- (c) milled groove -->
+  <div class="sh-divider" aria-hidden="true"></div>
+
+  <!-- (d) dynamic group -->
+  <div class="sh-dyngroup">
+    <div class="sh-pillmount" data-pill="dynamic"></div>
+    <div class="sh-dynknobs">
+      <div class="sh-knobmount" data-knob="threshold"></div>
+      <div class="sh-knobmount" data-knob="range"></div>
+      <div class="sh-knobmount" data-knob="attack"></div>
+      <div class="sh-knobmount" data-knob="release"></div>
+    </div>
+  </div>
+
+  <!-- (e) right-hand buttons -->
+  <div class="sh-btncol">
+    <button class="sh-minibtn" type="button" data-act="solo" aria-pressed="false">SOLO</button>
+    <button class="sh-powerbtn is-on" type="button" data-act="power" aria-label="Band on/off" aria-pressed="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M8.4 6.9a6.4 6.4 0 1 0 7.2 0"/>
+        <path d="M12 3v8.2"/>
+      </svg>
+    </button>
+    <button class="sh-minibtn" type="button" data-act="sc" aria-pressed="false">SC</button>
+  </div>
+
+</div>
+
+<div class="sh-bottombar">
+
+  <div class="sh-iocell sh-iocell--in">
+    <span class="sh-cap">INPUT</span>
+    <div class="sh-knobmount" data-knob="input" data-size="lg"></div>
+  </div>
+
+  <div class="sh-divider sh-divider--bar" aria-hidden="true"></div>
+
+  <div class="sh-segzone">
+    <div class="sh-segcell">
+      <span class="sh-cap">PHASE &middot;</span>
+      <div class="sh-segmount" data-seg="phase"></div>
+    </div>
+    <div class="sh-segcell">
+      <span class="sh-cap">SCALE &middot;</span>
+      <div class="sh-segmount" data-seg="scale"></div>
+    </div>
+    <div class="sh-segcell">
+      <span class="sh-cap">MODE &middot;</span>
+      <div class="sh-segmount" data-seg="mode"></div>
+    </div>
+  </div>
+
+  <div class="sh-divider sh-divider--bar" aria-hidden="true"></div>
+
+  <div class="sh-iocell sh-iocell--out">
+    <span class="sh-cap">OUTPUT</span>
+    <div class="sh-knobmount" data-knob="output" data-size="lg"></div>
+  </div>
+
+</div>
+</div>
+
+  <footer class="sh-footer">
+    <span class="sh-footer-line">SHAPE THE SPECTRUM</span>
+    <span class="sh-footer-slash" aria-hidden="true">/</span>
+    <span class="sh-footer-line">REVEAL THE EMOTION</span>
+  </footer>
+</div>
+</div>
+
+<script>
+/* ==================================================================
+   SHAPE — engine
+   Filter design, state, analyser model, interaction and the frame loop.
+   Drawing lives in canvas.js; controls in knobs.html.
+
+   The response curve is computed, never drawn: real RBJ-cookbook biquad
+   sections, cascaded per band, evaluated as 20*log10|H(e^jw)| at every
+   pixel column.
+   ================================================================== */
+"use strict";
+
+var FS = 48000;
+var NYQ = FS / 2;
+var FMIN = 10, FMAX = 30000;
+var LOG_MIN = Math.log(FMIN), LOG_SPAN = Math.log(FMAX) - LOG_MIN;
+var GAIN_RANGE = 24;          /* left axis, ±24 dB — as the reference draws it */
+
+function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+function fToNorm(f) { return (Math.log(clamp(f, FMIN, FMAX)) - LOG_MIN) / LOG_SPAN; }
+function normToF(t) { return Math.exp(LOG_MIN + t * LOG_SPAN); }
+
+/* ---------- filter catalogue ---------------------------------- */
+var TYPES = {
+  bell:      { label: "Bell",       gain: true,  q: true,  slope: false },
+  lowshelf:  { label: "Low Shelf",  gain: true,  q: true,  slope: false },
+  highshelf: { label: "High Shelf", gain: true,  q: true,  slope: false },
+  tilt:      { label: "Tilt Shelf", gain: true,  q: true,  slope: false },
+  lowcut:    { label: "Low Cut",    gain: false, q: false, slope: true  },
+  highcut:   { label: "High Cut",   gain: false, q: false, slope: true  },
+  notch:     { label: "Notch",      gain: false, q: true,  slope: false },
+  bandpass:  { label: "Band Pass",  gain: false, q: true,  slope: false }
+};
+
+/* ---------- biquad design (RBJ Audio EQ Cookbook) -------------- */
+function butterworthQs(order) {
+  var qs = [];
+  for (var k = 0; k < Math.floor(order / 2); k++) {
+    qs.push(1 / (2 * Math.cos(((2 * k + 1) * Math.PI) / (2 * order))));
+  }
+  return qs;
+}
+function sec(b0, b1, b2, a0, a1, a2) {
+  return { b0: b0 / a0, b1: b1 / a0, b2: b2 / a0, a1: a1 / a0, a2: a2 / a0 };
+}
+function peaking(f0, g, Q) {
+  var A = Math.pow(10, g / 40);
+  var w = 2 * Math.PI * f0 / FS, cw = Math.cos(w), al = Math.sin(w) / (2 * Q);
+  return sec(1 + al * A, -2 * cw, 1 - al * A, 1 + al / A, -2 * cw, 1 - al / A);
+}
+function lowShelf(f0, g, Q) {
+  var A = Math.pow(10, g / 40), sA = Math.sqrt(A);
+  var w = 2 * Math.PI * f0 / FS, cw = Math.cos(w), al = Math.sin(w) / (2 * Q), t = 2 * sA * al;
+  return sec(A * ((A + 1) - (A - 1) * cw + t),
+             2 * A * ((A - 1) - (A + 1) * cw),
+             A * ((A + 1) - (A - 1) * cw - t),
+             (A + 1) + (A - 1) * cw + t,
+             -2 * ((A - 1) + (A + 1) * cw),
+             (A + 1) + (A - 1) * cw - t);
+}
+function highShelf(f0, g, Q) {
+  var A = Math.pow(10, g / 40), sA = Math.sqrt(A);
+  var w = 2 * Math.PI * f0 / FS, cw = Math.cos(w), al = Math.sin(w) / (2 * Q), t = 2 * sA * al;
+  return sec(A * ((A + 1) + (A - 1) * cw + t),
+             -2 * A * ((A - 1) + (A + 1) * cw),
+             A * ((A + 1) + (A - 1) * cw - t),
+             (A + 1) - (A - 1) * cw + t,
+             2 * ((A - 1) - (A + 1) * cw),
+             (A + 1) - (A - 1) * cw - t);
+}
+function highPass2(f0, Q) {
+  var w = 2 * Math.PI * f0 / FS, cw = Math.cos(w), al = Math.sin(w) / (2 * Q);
+  return sec((1 + cw) / 2, -(1 + cw), (1 + cw) / 2, 1 + al, -2 * cw, 1 - al);
+}
+function lowPass2(f0, Q) {
+  var w = 2 * Math.PI * f0 / FS, cw = Math.cos(w), al = Math.sin(w) / (2 * Q);
+  return sec((1 - cw) / 2, 1 - cw, (1 - cw) / 2, 1 + al, -2 * cw, 1 - al);
+}
+function highPass1(f0) {
+  var K = Math.tan(Math.PI * f0 / FS), n = 1 / (1 + K);
+  return { b0: n, b1: -n, b2: 0, a1: (K - 1) * n, a2: 0 };
+}
+function lowPass1(f0) {
+  var K = Math.tan(Math.PI * f0 / FS), n = 1 / (1 + K);
+  return { b0: K * n, b1: K * n, b2: 0, a1: (K - 1) * n, a2: 0 };
+}
+function notchSec(f0, Q) {
+  var w = 2 * Math.PI * f0 / FS, cw = Math.cos(w), al = Math.sin(w) / (2 * Q);
+  return sec(1, -2 * cw, 1, 1 + al, -2 * cw, 1 - al);
+}
+function bandPassSec(f0, Q) {
+  var w = 2 * Math.PI * f0 / FS, cw = Math.cos(w), al = Math.sin(w) / (2 * Q);
+  return sec(al, 0, -al, 1 + al, -2 * cw, 1 - al);
+}
+
+function designBand(band, gainDb) {
+  var f0 = clamp(band.freq, FMIN, NYQ * 0.995);
+  var Q = clamp(band.q, 0.1, 100);
+  switch (band.type) {
+    case "bell":      return [peaking(f0, gainDb, Q)];
+    case "lowshelf":  return [lowShelf(f0, gainDb, Q)];
+    case "highshelf": return [highShelf(f0, gainDb, Q)];
+    case "tilt":      return [lowShelf(f0, -gainDb, Q), highShelf(f0, gainDb, Q)];
+    case "notch":     return [notchSec(f0, Q)];
+    case "bandpass":  return [bandPassSec(f0, Q)];
+    case "lowcut":
+    case "highcut": {
+      var order = Math.max(1, Math.round(band.slope / 6));
+      var out = [], qs = butterworthQs(order), i;
+      if (order % 2 === 1) out.push(band.type === "lowcut" ? highPass1(f0) : lowPass1(f0));
+      for (i = 0; i < qs.length; i++) {
+        out.push(band.type === "lowcut" ? highPass2(f0, qs[i]) : lowPass2(f0, qs[i]));
+      }
+      return out;
+    }
+    default: return [];
+  }
+}
+function cascadeDb(sections, c1, s1, c2, s2) {
+  var db = 0;
+  for (var i = 0; i < sections.length; i++) {
+    var s = sections[i];
+    var nr = s.b0 + s.b1 * c1 + s.b2 * c2, ni = -(s.b1 * s1 + s.b2 * s2);
+    var dr = 1 + s.a1 * c1 + s.a2 * c2, di = -(s.a1 * s1 + s.a2 * s2);
+    db += 10 * Math.log10((nr * nr + ni * ni) / (dr * dr + di * di) + 1e-30);
+  }
+  return db;
+}
+
+/* ---------- state --------------------------------------------- */
+function mkBand(type, freq, gain, q, extra) {
+  var b = {
+    type: type, freq: freq, gain: gain, q: q, slope: 12, on: true,
+    dyn: { on: false, range: -6, threshold: -24, attack: 10, release: 120, cur: 0 }
+  };
+  if (extra) for (var k in extra) b[k] = extra[k];
+  return b;
+}
+
+var PRESETS = [
+  { name: "Master Clean", tag: "PRECISION · MUSICAL · NATURAL", bands: [
+    mkBand("lowcut", 36, 0, 0.71, { slope: 12 }),
+    mkBand("bell", 104, 6.4, 0.9),
+    mkBand("bell", 512, -4.8, 2.4, { dyn: { on: true, range: -6, threshold: -24, attack: 10, release: 120, cur: 0 } }),
+    mkBand("bell", 3800, 6.2, 0.85),
+    mkBand("bell", 15000, 4.4, 0.8)
+  ]},
+  { name: "Vocal Presence", tag: "FORWARD · CLEAR · INTIMATE", bands: [
+    mkBand("lowcut", 92, 0, 0.71, { slope: 24 }),
+    mkBand("bell", 268, -3.4, 1.6),
+    mkBand("bell", 2900, 4.6, 1.1),
+    mkBand("bell", 6400, -4.2, 5.5, { dyn: { on: true, range: -5, threshold: -22, attack: 3, release: 80, cur: 0 } }),
+    mkBand("highshelf", 10500, 3.8, 0.7)
+  ]},
+  { name: "Drum Punch", tag: "TIGHT · PUNCHY · OPEN", bands: [
+    mkBand("lowcut", 28, 0, 0.71, { slope: 18 }),
+    mkBand("bell", 68, 5.6, 1.3),
+    mkBand("bell", 420, -5.0, 1.8),
+    mkBand("bell", 3400, 4.2, 1.0),
+    mkBand("highshelf", 9000, 3.4, 0.7)
+  ]},
+  { name: "Bass Control", tag: "DEEP · CONTROLLED · SOLID", bands: [
+    mkBand("lowcut", 30, 0, 0.71, { slope: 36 }),
+    mkBand("bell", 82, 4.0, 1.1),
+    mkBand("bell", 180, -5.5, 2.2, { dyn: { on: true, range: -8, threshold: -20, attack: 14, release: 180, cur: 0 } }),
+    mkBand("bell", 900, 2.6, 1.4),
+    mkBand("highcut", 12000, 0, 0.71, { slope: 12 })
+  ]},
+  { name: "Air Lift", tag: "SILKY · OPEN · TALL", bands: [
+    mkBand("bell", 340, -2.4, 1.4),
+    mkBand("highshelf", 7800, 4.4, 0.6),
+    mkBand("bell", 15500, 3.8, 0.9)
+  ]},
+  { name: "Surgical Repair", tag: "NARROW · SURGICAL · EXACT", bands: [
+    mkBand("notch", 60, 0, 30),
+    mkBand("notch", 180, 0, 30),
+    mkBand("bell", 3150, -8.5, 12),
+    mkBand("highshelf", 11000, 2.4, 0.7)
+  ]}
+];
+
+var ST = {
+  presetIndex: 0,
+  bands: JSON.parse(JSON.stringify(PRESETS[0].bands)),
+  selected: 2,
+  slot: "A",
+  analyzerOn: true,
+  analyzerMode: "pre",          /* pre | post | both */
+  tab: "eq",                    /* eq | dynamic | spectral */
+  phase: "zero",
+  fineScale: 12,                /* right-hand ruler range, matches SCALE control */
+  mode: "clean",
+  input: 0,
+  output: 0,
+  solo: false,
+  power: true,
+  sidechain: false,
+  bypass: false
+};
+function cur() { return ST; }
+function selBand() { return ST.bands[ST.selected]; }
+
+/* ---------- undo / redo (gestures grouped) --------------------- */
+var History = {
+  past: [], future: [],
+  snap: function () { return JSON.stringify(ST); },
+  restore: function (s) {
+    var o = JSON.parse(s);
+    for (var k in o) ST[k] = o[k];
+  },
+  push: function (prev) {
+    this.past.push(prev);
+    if (this.past.length > 120) this.past.shift();
+    this.future.length = 0;
+  },
+  undo: function () {
+    if (!this.past.length) return;
+    var now = this.snap(); this.restore(this.past.pop()); this.future.push(now); syncAll();
+  },
+  redo: function () {
+    if (!this.future.length) return;
+    var now = this.snap(); this.restore(this.future.pop()); this.past.push(now); syncAll();
+  }
+};
+var gestureSnap = null;
+function beginGesture() { if (gestureSnap === null) gestureSnap = History.snap(); }
+function endGesture() {
+  if (gestureSnap !== null && gestureSnap !== History.snap()) History.push(gestureSnap);
+  gestureSnap = null;
+}
+function commit(fn) {
+  var before = History.snap(); fn();
+  if (before !== History.snap()) History.push(before);
+}
+
+/* ---------- analyser model ------------------------------------- */
+var NBINS = 420;
+var binF = new Float64Array(NBINS);
+var binT = new Float64Array(NBINS);
+for (var _i = 0; _i < NBINS; _i++) {
+  binT[_i] = _i / (NBINS - 1);
+  binF[_i] = normToF(binT[_i]);
+}
+var specRaw = new Float64Array(NBINS);
+var specDisp = new Float64Array(NBINS);
+var specPeak = new Float64Array(NBINS);
+var texture = new Float64Array(NBINS);
+for (var _j = 0; _j < NBINS; _j++) { specDisp[_j] = -90; specPeak[_j] = -120; }
+
+var T = 0;
+function updateSpectrum(dt) {
+  T += dt;
+  var bassF = 58 * Math.pow(2, 0.42 * Math.sin(T * 0.27) + 0.22 * Math.sin(T * 0.63));
+  var midEnv = 0.62 + 0.38 * Math.sin(T * 0.41 + 1.2);
+  var hfEnv = 0.55 + 0.45 * Math.sin(T * 0.53 + 2.6);
+  var snare = Math.pow(Math.max(0, Math.sin(T * 2.1)), 6);
+  var i, f, v, amp;
+
+  for (i = 0; i < NBINS; i++) {
+    f = binF[i];
+    v = -13 - 11.5 * Math.log10(Math.max(f, 20) / 42);
+    v += 17 * Math.exp(-Math.pow(Math.log(f / bassF) / Math.LN2 / 0.5, 2));
+    v += 10 * Math.exp(-Math.pow(Math.log(f / (bassF * 2)) / Math.LN2 / 0.45, 2));
+    v += 6 * Math.exp(-Math.pow(Math.log(f / (bassF * 3)) / Math.LN2 / 0.42, 2));
+    v += 8 * midEnv * Math.exp(-Math.pow(Math.log(f / 620) / Math.LN2 / 1.15, 2));
+    v += 7 * hfEnv * Math.exp(-Math.pow(Math.log(f / 3600) / Math.LN2 / 1.05, 2));
+    v += 9 * snare * Math.exp(-Math.pow(Math.log(f / 1900) / Math.LN2 / 1.4, 2));
+    amp = 2.4 + 3.6 * Math.min(1, f / 2500);
+    texture[i] += ((Math.random() * 2 - 1) * amp - texture[i]) * 0.34;
+    specRaw[i] = v + texture[i];
+  }
+  for (i = 1; i < NBINS - 1; i++) {
+    specRaw[i] = specRaw[i] * 0.5 + specRaw[i - 1] * 0.25 + specRaw[i + 1] * 0.25;
+  }
+  for (i = 0; i < NBINS; i++) {
+    var t = specRaw[i];
+    specDisp[i] += (t - specDisp[i]) * (t > specDisp[i] ? 0.52 : 0.045);
+    specPeak[i] = Math.max(specPeak[i] - 26 * dt, specDisp[i]);
+  }
+}
+
+function detectorLevel(band) {
+  var bw = (band.type === "bell" || band.type === "notch" || band.type === "bandpass")
+    ? clamp(1 / Math.max(band.q, 0.2), 0.12, 2.2) : 1.0;
+  var sum = 0, wsum = 0;
+  for (var i = 0; i < NBINS; i++) {
+    var oct = Math.log(binF[i] / band.freq) / Math.LN2;
+    var w = Math.exp(-Math.pow(oct / bw, 2));
+    if (w < 0.02) continue;
+    sum += Math.pow(10, specDisp[i] / 10) * w;
+    wsum += w;
+  }
+  return 10 * Math.log10(sum / Math.max(wsum, 1e-9) + 1e-12);
+}
+function updateDynamics(dt) {
+  for (var i = 0; i < ST.bands.length; i++) {
+    var b = ST.bands[i];
+    if (!b.dyn.on || !b.on || ST.bypass) { b.dyn.cur *= 0.85; continue; }
+    var over = detectorLevel(b) - b.dyn.threshold;
+    var amount = over > 0 ? clamp(over / 2.5 / Math.max(Math.abs(b.dyn.range), 0.001), 0, 1) : 0;
+    var target = b.dyn.range * amount;
+    var moving = Math.abs(target) > Math.abs(b.dyn.cur);
+    var tau = (moving ? b.dyn.attack : b.dyn.release) / 1000;
+    b.dyn.cur += (target - b.dyn.cur) * clamp(1 - Math.exp(-dt / Math.max(tau, 0.0005)), 0, 1);
+  }
+}
+
+/* ---------- canvas geometry ------------------------------------ */
+var cv, ctx, CW = 0, CH = 0, DPR = 1;
+var PAD = { l: 46, r: 46, t: 52, b: 26 };   /* t clears the floating toolbar */
+function plot() {
+  return { x: PAD.l, y: PAD.t, w: Math.max(10, CW - PAD.l - PAD.r), h: Math.max(10, CH - PAD.t - PAD.b) };
+}
+function xOfF(f) { var p = plot(); return p.x + fToNorm(f) * p.w; }
+function fOfX(x) { var p = plot(); return normToF(clamp((x - p.x) / p.w, 0, 1)); }
+function yOfDb(db) { var p = plot(); return p.y + p.h * (GAIN_RANGE - db) / (2 * GAIN_RANGE); }
+function dbOfY(y) { var p = plot(); return GAIN_RANGE - ((y - p.y) / p.h) * 2 * GAIN_RANGE; }
+/* right-hand fine ruler: the SCALE control picks its range, and it is a
+   gain ruler, not a level meter — exactly as the reference draws it */
+function yOfFs(v) { return yOfDb(v * (GAIN_RANGE / ST.fineScale)); }
+/* analyser magnitudes get their own mapping across the plot */
+var A_TOP = 26, A_BOT = -74;
+function yOfLevel(dbfs) { var p = plot(); return p.y + p.h * (A_TOP - dbfs) / (A_TOP - A_BOT); }
+
+function resizeCanvas() {
+  var r = cv.getBoundingClientRect();
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  CW = Math.max(240, Math.round(r.width));
+  CH = Math.max(160, Math.round(r.height));
+  cv.width = Math.round(CW * DPR);
+  cv.height = Math.round(CH * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+
+/* ---------- response ------------------------------------------- */
+var respLive = new Float64Array(0), respStatic = new Float64Array(0),
+    respRange = new Float64Array(0), respW = 0;
+
+function computeResponses(width) {
+  if (respW !== width) {
+    respLive = new Float64Array(width);
+    respStatic = new Float64Array(width);
+    respRange = new Float64Array(width);
+    respW = width;
+  }
+  respLive.fill(0); respStatic.fill(0); respRange.fill(0);
+  if (ST.bypass || !ST.power) return;
+
+  var sel = ST.bands[ST.selected];
+  for (var bi = 0; bi < ST.bands.length; bi++) {
+    var band = ST.bands[bi];
+    if (!band.on) continue;
+    if (ST.solo && band !== sel) continue;
+    var g = TYPES[band.type].gain ? band.gain : 0;
+    var sS = designBand(band, g);
+    var sL = band.dyn.on ? designBand(band, g + band.dyn.cur) : sS;
+    var sR = band.dyn.on ? designBand(band, g + band.dyn.range) : sS;
+
+    for (var x = 0; x < width; x++) {
+      var f = normToF(x / (width - 1));
+      var w = Math.min(2 * Math.PI * f / FS, Math.PI * 0.9995);
+      var c1 = Math.cos(w), s1 = Math.sin(w), c2 = Math.cos(2 * w), s2 = Math.sin(2 * w);
+      var dS = cascadeDb(sS, c1, s1, c2, s2);
+      respStatic[x] += dS;
+      respLive[x] += (sL === sS) ? dS : cascadeDb(sL, c1, s1, c2, s2);
+      respRange[x] += (sR === sS) ? dS : cascadeDb(sR, c1, s1, c2, s2);
+    }
+  }
+}
+function respAtF(f) {
+  if (!respW) return 0;
+  return respLive[clamp(Math.round(fToNorm(f) * (respW - 1)), 0, respW - 1)];
+}
+
+/* ---------- formatting ----------------------------------------- */
+function fmtFreq(f) {
+  if (f >= 10000) return (f / 1000).toFixed(1) + " kHz";
+  if (f >= 1000) return (f / 1000).toFixed(2) + " kHz";
+  return f.toFixed(f < 100 ? 1 : 0) + " Hz";
+}
+function fmtDb(v) { return (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(1) + " dB"; }
+
+/* ---------- canvas interaction --------------------------------- */
+var hover = { x: -1, y: -1, inside: false, node: -1 };
+var drag = null;
+
+function nodeY(band) {
+  var g = TYPES[band.type].gain ? band.gain + (band.dyn.on ? band.dyn.cur : 0) : 0;
+  return yOfDb(g);
+}
+function localPt(e) {
+  var r = cv.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+function hitNode(pt) {
+  var best = -1, bestD = 18 * 18;
+  for (var i = 0; i < ST.bands.length; i++) {
+    var b = ST.bands[i];
+    var dx = xOfF(b.freq) - pt.x, dy = nodeY(b) - pt.y;
+    var d = dx * dx + dy * dy;
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  return best;
+}
+
+function bindCanvas() {
+  cv.addEventListener("pointermove", function (e) {
+    var pt = localPt(e), p = plot();
+    hover.x = pt.x; hover.y = pt.y;
+    hover.inside = pt.x >= p.x && pt.x <= p.x + p.w && pt.y >= p.y && pt.y <= p.y + p.h;
+    if (drag) {
+      var b = ST.bands[drag.i], fine = e.shiftKey ? 0.22 : 1;
+      b.freq = clamp(fOfX(drag.sx + (pt.x - drag.px) * fine), FMIN + 2, 30000);
+      if (TYPES[b.type].gain) b.gain = clamp(dbOfY(drag.sy + (pt.y - drag.py) * fine), -24, 24);
+      syncBandControls();
+      return;
+    }
+    hover.node = hitNode(pt);
+    cv.style.cursor = hover.node >= 0 ? "grab" : "crosshair";
+  });
+  cv.addEventListener("pointerleave", function () { hover.inside = false; hover.node = -1; });
+
+  cv.addEventListener("pointerdown", function (e) {
+    var pt = localPt(e), i = hitNode(pt);
+    if (i < 0) return;
+    if (e.altKey) { commit(function () { ST.bands[i].on = !ST.bands[i].on; }); syncAll(); return; }
+    beginGesture();
+    ST.selected = i;
+    drag = { i: i, px: pt.x, py: pt.y, sx: xOfF(ST.bands[i].freq), sy: nodeY(ST.bands[i]) };
+    cv.setPointerCapture(e.pointerId);
+    cv.style.cursor = "grabbing";
+    syncAll();
+  });
+  function up() { if (drag) { drag = null; endGesture(); cv.style.cursor = "crosshair"; } }
+  cv.addEventListener("pointerup", up);
+  cv.addEventListener("pointercancel", up);
+
+  cv.addEventListener("wheel", function (e) {
+    var i = hover.node >= 0 ? hover.node : hitNode(localPt(e));
+    if (i < 0) return;
+    var b = ST.bands[i];
+    if (!TYPES[b.type].q) return;
+    e.preventDefault();
+    beginGesture();
+    ST.selected = i;
+    b.q = clamp(b.q * Math.exp(-e.deltaY * 0.0016 * (e.shiftKey ? 0.3 : 1)), 0.1, 100);
+    syncBandControls();
+    clearTimeout(cv._wt);
+    cv._wt = setTimeout(endGesture, 350);
+  }, { passive: false });
+
+  cv.addEventListener("dblclick", function (e) {
+    var pt = localPt(e), p = plot();
+    if (hitNode(pt) >= 0 || pt.x < p.x || pt.x > p.x + p.w) return;
+    if (ST.bands.length >= 24) return;
+    commit(function () {
+      var f = Math.round(fOfX(pt.x));
+      ST.bands.push(mkBand("bell", f, +clamp(dbOfY(pt.y), -24, 24).toFixed(1), 1.0));
+      ST.bands.sort(function (a, b) { return a.freq - b.freq; });
+      for (var i = 0; i < ST.bands.length; i++) if (ST.bands[i].freq === f) { ST.selected = i; break; }
+    });
+    syncAll();
+  });
+
+  cv.addEventListener("contextmenu", function (e) {
+    var i = hitNode(localPt(e));
+    if (i < 0) return;
+    e.preventDefault();
+    removeBand(i);
+  });
+
+  window.addEventListener("keydown", function (e) {
+    var tag = (e.target.tagName || "").toLowerCase();
+    if (tag === "input" || tag === "select" || tag === "textarea") return;
+    var k = e.key.toLowerCase();
+    if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); removeBand(ST.selected); }
+    else if ((e.metaKey || e.ctrlKey) && k === "z") { e.preventDefault(); e.shiftKey ? History.redo() : History.undo(); }
+    else if (e.key === "[") { ST.selected = (ST.selected - 1 + ST.bands.length) % ST.bands.length; syncAll(); }
+    else if (e.key === "]") { ST.selected = (ST.selected + 1) % ST.bands.length; syncAll(); }
+  });
+}
+function removeBand(i) {
+  if (ST.bands.length <= 1 || i < 0 || i >= ST.bands.length) return;
+  commit(function () {
+    ST.bands.splice(i, 1);
+    ST.selected = clamp(ST.selected, 0, ST.bands.length - 1);
+  });
+  syncAll();
+}
+
+function loadPreset(i) {
+  commit(function () {
+    ST.presetIndex = ((i % PRESETS.length) + PRESETS.length) % PRESETS.length;
+    ST.bands = JSON.parse(JSON.stringify(PRESETS[ST.presetIndex].bands));
+    ST.selected = Math.min(ST.selected, ST.bands.length - 1);
+  });
+  syncAll();
+}
+
+/* ---------- frame loop ----------------------------------------- */
+var lastT = 0;
+var reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function frame(now) {
+  var dt = Math.min(0.05, (now - lastT) / 1000);
+  lastT = now;
+
+  if (!reducedMotion && ST.analyzerOn) updateSpectrum(dt);
+  updateDynamics(dt);
+
+  var p = plot();
+  computeResponses(Math.max(64, Math.round(p.w)));
+
+  ctx.clearRect(0, 0, CW, CH);
+  drawWell(ctx, p);
+  if (ST.analyzerOn) {
+    if (ST.analyzerMode === "pre" || ST.analyzerMode === "both") drawSpectrum(ctx, p);
+    if (ST.analyzerMode === "post" || ST.analyzerMode === "both") drawSpectrumPost(ctx, p);
+  }
+  /* the tabs change emphasis rather than hiding anything: SPECTRAL pushes
+     the curve back so the analyser reads, DYNAMIC does the reverse */
+  ctx.save();
+  if (ST.tab === "spectral") ctx.globalAlpha = 0.35;
+  drawResponse(ctx, p, ST.bands);
+  drawNodes(ctx, p, ST.bands, ST.selected, hover.node);
+  ctx.restore();
+  if (hover.inside && !drag) {
+    var f = fOfX(hover.x);
+    drawHoverGuide(ctx, p, hover.x, f, respAtF(f));
+  }
+  drawAxes(ctx, p);
+
+  requestAnimationFrame(frame);
+}
+
+function bootEngine() {
+  cv = document.getElementById("shape-graph");
+  ctx = cv.getContext("2d");
+  if (window.ResizeObserver) new ResizeObserver(resizeCanvas).observe(cv);
+  else window.addEventListener("resize", resizeCanvas);
+  resizeCanvas();
+  bindCanvas();
+  buildControls();
+  syncAll();
+  for (var i = 0; i < 45; i++) updateSpectrum(1 / 60);   /* settle before first paint */
+  lastT = performance.now();
+  requestAnimationFrame(frame);
+}
+
+</script>
+
+<script>
+/* ===========================================================================
+   SHAPE — canvas rendering layer
+   ---------------------------------------------------------------------------
+   Pure drawing only. No state, no timers, no listeners, no DOM.
+   Every function saves and restores the context, so nothing leaks between
+   passes (globalAlpha, shadowBlur, lineDash, strokeStyle, fonts, clips).
+
+   Assumes these already exist as globals:
+     FMIN FMAX FS NBINS
+     xOfF(f) fOfX(x) yOfDb(db) dbOfY(y) yOfFs(dbfs)
+     plot() -> {x,y,w,h}
+     respLive respStatic respRange   (dB per pixel column)
+     specDisp specPeak binF          (Float64Array(NBINS))
+     cur() -> {bands, selected, bypass}
+
+   Public:
+     bandHue(band, i[, selectedIndex])
+     drawWell(ctx, p)
+     drawAxes(ctx, p)
+     drawSpectrum(ctx, p)
+     drawResponse(ctx, p, bands)
+     drawNodes(ctx, p, bands, selectedIndex, hoverIndex)
+     drawHoverGuide(ctx, p, mouseX, freq, db)
+
+   Everything prefixed _shp / _SHP is private to this file. This file is
+   concatenated into a single inline <script>, so it is written in plain ES5
+   with top-level function declarations and no module syntax.
+   =========================================================================== */
+
+/* ---- locked tokens ------------------------------------------------------ */
+var _SHP_WELL_BG    = '#0C0E12';
+var _SHP_WELL_BG2   = '#171B21';
+var _SHP_WELL_LINE  = '#262B33';
+var _SHP_ON_DARK    = '#C8CFD8';
+var _SHP_ON_DARK2   = '#7B838E';
+var _SHP_AMBER      = '#FF9E2C';
+var _SHP_CYAN       = '#45C2F0';
+var _SHP_VIOLET     = '#9B7BF0';
+var _SHP_GREEN      = '#6FC98A';
+var _SHP_ORANGE     = '#FFA53D';
+
+/* Band hue cycle — ordered so neighbouring bands never share a hue. */
+var _SHP_PALETTE = ['#45C2F0', '#9B7BF0', '#FFA53D', '#45C2F0', '#6FC98A', '#9B7BF0'];
+
+var _SHP_FONT = '400 10px Inter, system-ui, sans-serif';
+var _SHP_TAU  = Math.PI * 2;
+
+var _SHP_NYQ_DRAW = 24000;   /* analyser stops here */
+
+var _SHP_GRID_F = [20, 30, 40, 50, 70, 100, 200, 300, 400, 500, 700,
+                   1000, 2000, 3000, 4000, 5000, 7000, 10000, 20000];
+
+/* the subset that carries a label, and therefore a brighter gridline */
+var _SHP_LABEL_F = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
+var _SHP_LABEL_TEXT = {
+  20: '20', 50: '50', 100: '100', 200: '200', 500: '500',
+  1000: '1k', 2000: '2k', 5000: '5k', 10000: '10k', 20000: '20k'
+};
+
+var _SHP_DB_TICKS = [24, 18, 12, 6, 0, -6, -12, -18, -24];
+var _SHP_FS_TICKS = [12, 6, 0, -6, -12];
+
+/* types that carry no gain — their node rides the 0 dB line */
+var _SHP_NO_GAIN = { lowcut: 1, highcut: 1, notch: 1, bandpass: 1 };
+
+/* Ticks for the right-hand fine ruler. That ruler's range is set by the SCALE
+   control, so the ticks follow it: at the default (±12) this is exactly the
+   locked list, and at any other setting the ruler stays honest rather than
+   printing a number against the wrong line. */
+function _shpFineTicks() {
+  var fs = 12;
+  if (typeof cur === 'function') {
+    var st = cur();
+    if (st && typeof st.fineScale === 'number' && isFinite(st.fineScale) && st.fineScale > 0) {
+      fs = st.fineScale;
+    }
+  }
+  if (fs === 12) return _SHP_FS_TICKS;
+  return [fs, fs / 2, 0, -fs / 2, -fs];
+}
+
+
+/* ---- private helpers ---------------------------------------------------- */
+
+function _shpClamp(v, lo, hi) {
+  return v < lo ? lo : (v > hi ? hi : v);
+}
+
+/* plot rect, with a fallback so a caller may omit it */
+function _shpRect(p) {
+  if (p && typeof p.w === 'number') return p;
+  return (typeof plot === 'function') ? plot() : { x: 0, y: 0, w: 0, h: 0 };
+}
+
+/* '#45C2F0' + alpha -> 'rgba(69,194,240,.28)' */
+function _shpRgba(hex, a) {
+  var h = String(hex == null ? '' : hex).replace('#', '');
+  if (h.length === 3) {
+    h = h.charAt(0) + h.charAt(0) + h.charAt(1) + h.charAt(1) + h.charAt(2) + h.charAt(2);
+  }
+  var n = parseInt(h, 16);
+  if (h.length !== 6 || isNaN(n)) return 'rgba(200,210,222,' + a + ')';
+  return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+}
+
+/* resolve the selected index when a caller did not hand one over */
+function _shpSelected(selectedIndex) {
+  if (typeof selectedIndex === 'number') return selectedIndex;
+  if (typeof cur === 'function') {
+    var st = cur();
+    if (st && typeof st.selected === 'number') return st.selected;
+  }
+  return -1;
+}
+
+function _shpBands(bands) {
+  if (bands && bands.length) return bands;
+  if (typeof cur === 'function') {
+    var st = cur();
+    if (st && st.bands) return st.bands;
+  }
+  return [];
+}
+
+/* gain the node actually sits at: static gain plus live dynamic movement */
+function _shpBandGain(band) {
+  if (!band) return 0;
+  if (_SHP_NO_GAIN[band.type]) return 0;
+  var g = (typeof band.gain === 'number') ? band.gain : 0;
+  if (band.dyn && band.dyn.on && typeof band.dyn.cur === 'number') g += band.dyn.cur;
+  return g;
+}
+
+/* open polyline along a dB array, one sample per pixel column.
+   Does not begin or close the path — the caller owns that. */
+function _shpRespPath(ctx, p, arr) {
+  var n = arr.length;
+  if (n < 2) return false;
+  var lo = p.y - 200, hi = p.y + p.h + 200;
+  for (var i = 0; i < n; i++) {
+    var px = p.x + (i / (n - 1)) * p.w;
+    var py = _shpClamp(yOfDb(arr[i]), lo, hi);
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  return true;
+}
+
+/* open polyline across the analyser bins. Returns the span it covered so the
+   caller can close it down to the floor, or null when nothing was drawn.
+   Deliberately point-to-point — the analyser must stay jagged. */
+function _shpSpecPath(ctx, p, arr) {
+  if (!arr || !arr.length) return null;
+  var n = Math.min(NBINS, arr.length, binF.length);
+  var lo = p.y - 40, hi = p.y + p.h + 40;
+  var started = false, first = 0, last = 0;
+  for (var i = 0; i < n; i++) {
+    var f = binF[i];
+    if (f > _SHP_NYQ_DRAW) break;
+    var x = xOfF(f);
+    var y = _shpClamp(yOfLevel(arr[i]), lo, hi);
+    if (!started) { ctx.moveTo(x, y); first = x; started = true; }
+    else ctx.lineTo(x, y);
+    last = x;
+  }
+  return started ? { first: first, last: last } : null;
+}
+
+function _shpRoundRectPath(ctx, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
+function _shpFmtHz(f) {
+  if (typeof f !== 'number' || !isFinite(f)) return '--';
+  if (f >= 10000) return (Math.round(f / 100) / 10) + ' kHz';
+  if (f >= 1000)  return (Math.round(f / 10) / 100) + ' kHz';
+  return Math.round(f) + ' Hz';
+}
+
+function _shpFmtDb(db) {
+  if (typeof db !== 'number' || !isFinite(db)) return '-- dB';
+  var v = Math.abs(db) < 0.05 ? 0 : db;
+  var sign = v < 0 ? '−' : '+';
+  return sign + Math.abs(v).toFixed(1) + ' dB';
+}
+
+
+/* ---- hue ---------------------------------------------------------------- */
+/* Selection wins over everything: amber marks the current band and nothing
+   else, which is what keeps one node readable against a full spectrum.
+   A dynamic band is violet. Otherwise the band takes its slot in the cycle. */
+function bandHue(band, i, selectedIndex) {
+  if (!band) return _SHP_CYAN;
+  var sel = _shpSelected(selectedIndex);
+  if (typeof i === 'number' && i >= 0 && i === sel) return _SHP_AMBER;
+  if (band.dyn && band.dyn.on) return _SHP_VIOLET;
+  var idx = (typeof i === 'number' && i >= 0) ? (i % _SHP_PALETTE.length) : 0;
+  return _SHP_PALETTE[idx];
+}
+
+
+/* ---- the well: ground, then grid ---------------------------------------- */
+function drawWell(ctx, p) {
+  ctx.save();
+  p = _shpRect(p);
+  if (p.w <= 0 || p.h <= 0) { ctx.restore(); return; }
+
+  var bottom = p.y + p.h, right = p.x + p.w, i, v, x, y;
+
+  var g = ctx.createLinearGradient(0, p.y, 0, bottom);
+  g.addColorStop(0, _SHP_WELL_BG2);
+  g.addColorStop(1, _SHP_WELL_BG);
+  ctx.fillStyle = g;
+  ctx.fillRect(p.x, p.y, p.w, p.h);
+
+  ctx.beginPath();
+  ctx.rect(p.x, p.y, p.w, p.h);
+  ctx.clip();
+
+  ctx.lineWidth = 1;
+
+  for (i = 0; i < _SHP_GRID_F.length; i++) {
+    v = _SHP_GRID_F[i];
+    x = Math.round(xOfF(v)) + 0.5;
+    if (x < p.x - 1 || x > right + 1) continue;
+    ctx.strokeStyle = _SHP_LABEL_TEXT[v] ? 'rgba(255,255,255,.10)' : 'rgba(255,255,255,.045)';
+    ctx.beginPath(); ctx.moveTo(x, p.y); ctx.lineTo(x, bottom); ctx.stroke();
+  }
+
+  for (i = 0; i < _SHP_DB_TICKS.length; i++) {
+    v = _SHP_DB_TICKS[i];
+    y = Math.round(yOfDb(v)) + 0.5;
+    if (y < p.y - 1 || y > bottom + 1) continue;
+    ctx.strokeStyle = (v === 0) ? 'rgba(255,255,255,.16)' : 'rgba(255,255,255,.055)';
+    ctx.beginPath(); ctx.moveTo(p.x, y); ctx.lineTo(right, y); ctx.stroke();
+  }
+
+  /* hairline lip, so the panel reads as sunk into the faceplate */
+  ctx.strokeStyle = _SHP_WELL_LINE;
+  ctx.strokeRect(Math.round(p.x) + 0.5, Math.round(p.y) + 0.5,
+                 Math.round(p.w) - 1, Math.round(p.h) - 1);
+
+  ctx.restore();
+}
+
+
+/* ---- axes: EQ gain left, analyser level right, frequency below ---------- */
+function drawAxes(ctx, p) {
+  ctx.save();
+  p = _shpRect(p);
+  if (p.w <= 0 || p.h <= 0) { ctx.restore(); return; }
+
+  var bottom = p.y + p.h, right = p.x + p.w, i, v, y, x;
+
+  ctx.font = _SHP_FONT;
+  ctx.fillStyle = _SHP_ON_DARK2;
+
+  /* left — EQ gain in dB */
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (i = 0; i < _SHP_DB_TICKS.length; i++) {
+    v = _SHP_DB_TICKS[i];
+    y = yOfDb(v);
+    if (y < p.y - 1 || y > bottom + 1) continue;
+    ctx.fillText((v > 0 ? '+' : '') + v, p.x - 9, y);
+  }
+  ctx.textBaseline = 'top';
+  ctx.fillText('dB', p.x - 9, 2);
+
+  /* right — the fine ruler */
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  var fine = _shpFineTicks();
+  for (i = 0; i < fine.length; i++) {
+    v = fine[i];
+    y = yOfFs(v);
+    if (y < p.y - 1 || y > bottom + 1) continue;
+    v = Math.round(v * 10) / 10;
+    ctx.fillText((v > 0 ? '+' : '') + v, right + 9, y);
+  }
+
+  /* bottom — frequency */
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  for (i = 0; i < _SHP_LABEL_F.length; i++) {
+    v = _SHP_LABEL_F[i];
+    x = xOfF(v);
+    if (x < p.x - 6 || x > right + 6) continue;
+    ctx.fillText(_SHP_LABEL_TEXT[v], x, bottom + 8);
+  }
+
+  ctx.restore();
+}
+
+
+/* ---- spectrum: behind everything, always neutral grey ------------------- */
+function drawSpectrum(ctx, p) {
+  ctx.save();
+  p = _shpRect(p);
+  if (p.w <= 0 || p.h <= 0 ||
+      typeof specDisp === 'undefined' || !specDisp || !specDisp.length ||
+      typeof binF === 'undefined' || !binF || !binF.length) {
+    ctx.restore(); return;
+  }
+
+  var floorY = p.y + p.h;
+
+  ctx.beginPath();
+  ctx.rect(p.x, p.y, p.w, p.h);
+  ctx.clip();
+
+  /* body */
+  ctx.beginPath();
+  var span = _shpSpecPath(ctx, p, specDisp);
+  if (!span) { ctx.restore(); return; }
+  ctx.lineTo(span.last, floorY + 2);
+  ctx.lineTo(span.first, floorY + 2);
+  ctx.closePath();
+
+  var g = ctx.createLinearGradient(0, p.y, 0, floorY);
+  g.addColorStop(0, 'rgba(200,210,222,.16)');
+  g.addColorStop(1, 'rgba(200,210,222,.03)');
+  ctx.fillStyle = g;
+  ctx.fill();
+
+  /* contour — redrawn open so the closing edges never get stroked */
+  ctx.lineWidth = 1;
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(210,218,228,.45)';
+  ctx.beginPath();
+  _shpSpecPath(ctx, p, specDisp);
+  ctx.stroke();
+
+  /* peak hold */
+  if (typeof specPeak !== 'undefined' && specPeak && specPeak.length) {
+    ctx.strokeStyle = 'rgba(255,255,255,.14)';
+    ctx.beginPath();
+    if (_shpSpecPath(ctx, p, specPeak)) ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+
+/* ---- the curve ---------------------------------------------------------- */
+
+/* Horizontal gradient carrying each band's hue at that band's frequency, so
+   the curve shifts colour along its length toward whichever band is local.
+   addColorStop throws on an out-of-range offset and misbehaves out of order,
+   so offsets are clamped and sorted before any of them is added. */
+function _shpCurveGradient(ctx, p, bands) {
+  var g = ctx.createLinearGradient(p.x, 0, p.x + p.w, 0);
+  var stops = [], i, b;
+
+  for (i = 0; i < bands.length; i++) {
+    b = bands[i];
+    if (!b || b.on === false) continue;
+    stops.push({ o: _shpClamp((xOfF(b.freq) - p.x) / (p.w || 1), 0, 1), c: bandHue(b, i) });
+  }
+  /* every band muted — keep a hue rather than an invisible curve */
+  if (!stops.length) {
+    for (i = 0; i < bands.length; i++) {
+      b = bands[i];
+      if (!b) continue;
+      stops.push({ o: _shpClamp((xOfF(b.freq) - p.x) / (p.w || 1), 0, 1), c: bandHue(b, i) });
+    }
+  }
+  if (!stops.length) {
+    g.addColorStop(0, _SHP_CYAN);
+    g.addColorStop(1, _SHP_CYAN);
+    return g;
+  }
+
+  stops.sort(function (a, c) { return a.o - c.o; });
+
+  /* anchor both ends so the curve never fades out at the edges */
+  g.addColorStop(0, stops[0].c);
+  for (i = 0; i < stops.length; i++) {
+    if (stops[i].o > 0 && stops[i].o < 1) g.addColorStop(stops[i].o, stops[i].c);
+  }
+  g.addColorStop(1, stops[stops.length - 1].c);
+  return g;
+}
+
+/* violet wash between the bands at rest and the bands pushed to their limit */
+function _shpDynamicRegion(ctx, p, bands) {
+  var any = false, i;
+  for (i = 0; i < bands.length; i++) {
+    if (bands[i] && bands[i].dyn && bands[i].dyn.on && bands[i].on !== false) { any = true; break; }
+  }
+  if (!any) return;
+  if (typeof respStatic === 'undefined' || typeof respRange === 'undefined') return;
+  if (!respStatic || !respRange || respStatic.length < 2 || respRange.length < 2) return;
+
+  var lo = p.y - 200, hi = p.y + p.h + 200;
+  var n = respStatic.length, m = respRange.length;
+
+  ctx.beginPath();
+  for (i = 0; i < n; i++) {
+    var px = p.x + (i / (n - 1)) * p.w;
+    var py = _shpClamp(yOfDb(respStatic[i]), lo, hi);
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  for (i = m - 1; i >= 0; i--) {
+    ctx.lineTo(p.x + (i / (m - 1)) * p.w, _shpClamp(yOfDb(respRange[i]), lo, hi));
+  }
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(155,123,240,.13)';
+  ctx.fill();
+}
+
+function drawResponse(ctx, p, bands) {
+  ctx.save();
+  p = _shpRect(p);
+  if (p.w <= 0 || p.h <= 0 ||
+      typeof respLive === 'undefined' || !respLive || respLive.length === 0) {
+    ctx.restore(); return;
+  }
+
+  bands = _shpBands(bands);
+
+  ctx.beginPath();
+  ctx.rect(p.x, p.y, p.w, p.h);
+  ctx.clip();
+
+  var grad = _shpCurveGradient(ctx, p, bands);
+  var zero = yOfDb(0);
+
+  /* 2 — fill, curve closed down onto the 0 dB line */
+  ctx.beginPath();
+  if (!_shpRespPath(ctx, p, respLive)) { ctx.restore(); return; }
+  ctx.lineTo(p.x + p.w, zero);
+  ctx.lineTo(p.x, zero);
+  ctx.closePath();
+
+  ctx.globalAlpha = 0.20;
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  /* second pass inside that same region: a vertical wash that fades out
+     toward the top and bottom of the well, so a deep excursion tints the
+     ground instead of flooding it with a slab of colour */
+  ctx.save();
+  ctx.beginPath();
+  _shpRespPath(ctx, p, respLive);
+  ctx.lineTo(p.x + p.w, zero);
+  ctx.lineTo(p.x, zero);
+  ctx.closePath();
+  ctx.clip();
+  var vg = ctx.createLinearGradient(0, p.y, 0, p.y + p.h);
+  var zt = _shpClamp((zero - p.y) / p.h, 0.02, 0.98);
+  vg.addColorStop(0, 'rgba(210,222,238,0)');
+  vg.addColorStop(zt, 'rgba(210,222,238,.07)');
+  vg.addColorStop(1, 'rgba(210,222,238,0)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(p.x, p.y, p.w, p.h);
+  ctx.restore();
+
+  /* 5 — dynamic range region. Drawn here rather than last so the violet
+     wash stays under the curve: over the core stroke it would veil it. */
+  _shpDynamicRegion(ctx, p, bands);
+
+  /* 3 — glow, two widening strokes rather than a shadow blur */
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = grad;
+  ctx.shadowBlur = 0;
+
+  ctx.globalAlpha = 0.18;
+  ctx.lineWidth = 6;
+  ctx.beginPath(); _shpRespPath(ctx, p, respLive); ctx.stroke();
+
+  ctx.globalAlpha = 0.30;
+  ctx.lineWidth = 3;
+  ctx.beginPath(); _shpRespPath(ctx, p, respLive); ctx.stroke();
+
+  /* 4 — core */
+  ctx.globalAlpha = 1;
+  ctx.lineWidth = 2.25;
+  ctx.beginPath(); _shpRespPath(ctx, p, respLive); ctx.stroke();
+
+  ctx.restore();
+}
+
+
+/* ---- nodes: small, crisp, glowing rings --------------------------------- */
+function drawNodes(ctx, p, bands, selectedIndex, hoverIndex) {
+  ctx.save();
+  p = _shpRect(p);
+  if (p.w <= 0 || p.h <= 0) { ctx.restore(); return; }
+
+  bands = _shpBands(bands);
+  var sel = _shpSelected(selectedIndex);
+  var hov = (typeof hoverIndex === 'number') ? hoverIndex : -1;
+
+  ctx.beginPath();
+  ctx.rect(p.x, p.y, p.w, p.h);
+  ctx.clip();
+
+  for (var i = 0; i < bands.length; i++) {
+    var band = bands[i];
+    if (!band) continue;
+
+    var x = xOfF(band.freq);
+    if (x < p.x - 24 || x > p.x + p.w + 24) continue;
+    var y = yOfDb(_shpBandGain(band));
+    if (y < p.y - 40 || y > p.y + p.h + 40) continue;
+
+    var hue = bandHue(band, i, sel);
+    var off = (band.on === false);
+
+    /* outer glow — skipped on a bypassed band */
+    if (!off) {
+      var rg = ctx.createRadialGradient(x, y, 0, x, y, 16);
+      rg.addColorStop(0, _shpRgba(hue, 0.28));
+      rg.addColorStop(0.55, _shpRgba(hue, 0.12));
+      rg.addColorStop(1, _shpRgba(hue, 0));
+      ctx.fillStyle = rg;
+      ctx.beginPath(); ctx.arc(x, y, 16, 0, _SHP_TAU); ctx.fill();
+    }
+
+    /* dark core */
+    ctx.fillStyle = '#12151A';
+    ctx.beginPath(); ctx.arc(x, y, 7, 0, _SHP_TAU); ctx.fill();
+
+    /* ring */
+    ctx.globalAlpha = off ? 0.35 : 1;
+    ctx.strokeStyle = hue;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(x, y, 7, 0, _SHP_TAU); ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    /* hover halo — a hairline, never a fatter node */
+    if (i === hov && i !== sel) {
+      ctx.globalAlpha = 0.40;
+      ctx.strokeStyle = hue;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(x, y, 11, 0, _SHP_TAU); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    /* selection ring */
+    if (i === sel) {
+      ctx.globalAlpha = 0.60;
+      ctx.strokeStyle = _SHP_AMBER;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(x, y, 12, 0, _SHP_TAU); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  ctx.restore();
+}
+
+
+/* ---- hover guide -------------------------------------------------------- */
+function drawHoverGuide(ctx, p, mouseX, freq, db) {
+  ctx.save();
+  p = _shpRect(p);
+  if (p.w <= 0 || p.h <= 0 || typeof mouseX !== 'number' || !isFinite(mouseX) ||
+      mouseX < p.x - 2 || mouseX > p.x + p.w + 2) {
+    ctx.restore(); return;
+  }
+
+  var right = p.x + p.w;
+  var gx = Math.round(_shpClamp(mouseX, p.x, right)) + 0.5;
+
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(255,255,255,.18)';
+  ctx.setLineDash([3, 4]);
+  ctx.beginPath();
+  ctx.moveTo(gx, p.y);
+  ctx.lineTo(gx, p.y + p.h);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  var label = _shpFmtHz(freq) + '   ' + _shpFmtDb(db);
+
+  ctx.font = _SHP_FONT;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+
+  var padX = 7, boxH = 19;
+  var boxW = Math.round(ctx.measureText(label).width) + padX * 2;
+  var boxY = Math.round(p.y + 8) + 0.5;
+  var boxX = Math.round(gx + 10) + 0.5;
+
+  /* flip to the left of the cursor rather than run off the well */
+  if (boxX + boxW > right - 4) boxX = Math.round(gx - 10 - boxW) + 0.5;
+  boxX = Math.max(Math.round(p.x + 4) + 0.5, boxX);
+
+  ctx.beginPath();
+  _shpRoundRectPath(ctx, boxX, boxY, boxW, boxH, 4);
+  ctx.fillStyle = 'rgba(10,12,16,.92)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.12)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = _SHP_ON_DARK;
+  ctx.fillText(label, boxX + padX, boxY + boxH / 2 + 0.5);
+
+  ctx.restore();
+}
+
+
+/* ---- POST spectrum: PRE multiplied by the computed response ------------
+   Not a second synthetic curve — the same bins, offset by the response the
+   EQ actually produces at that frequency, so it moves when a node moves. */
+function drawSpectrumPost(ctx, p) {
+  ctx.save();
+  p = _shpRect(p);
+  if (p.w <= 0 || p.h <= 0 || typeof specDisp === 'undefined' ||
+      !specDisp || !specDisp.length) { ctx.restore(); return; }
+
+  ctx.beginPath();
+  ctx.rect(p.x, p.y, p.w, p.h);
+  ctx.clip();
+
+  var n = Math.min(NBINS, specDisp.length, binF.length);
+  var lo = p.y - 40, hi = p.y + p.h + 40;
+  var started = false;
+
+  ctx.beginPath();
+  for (var i = 0; i < n; i++) {
+    var f = binF[i];
+    if (f > _SHP_NYQ_DRAW) break;
+    var x = xOfF(f);
+    var y = _shpClamp(yOfLevel(specDisp[i] + respAtF(f)), lo, hi);
+    if (!started) { ctx.moveTo(x, y); started = true; } else { ctx.lineTo(x, y); }
+  }
+  if (started) {
+    ctx.lineWidth = 1.25;
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = 'rgba(155,123,240,.80)';
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+</script>
+
+<script>
+(function(){
+  "use strict";
+
+  var ARC_START = 135;          /* 7:30 */
+  var ARC_SWEEP = 270;          /* to 4:30, clockwise through 12 o'clock */
+  var DRAG_TRAVEL = 190;        /* px of vertical travel for the full range */
+  var FINE = 0.22;
+  var uid = 0;
+
+  var SIZES = {
+    md:{ body:52, box:70, rArc:28.2, tickIn:31.0, tickOut:34.0, arcW:2.5, tickW:1 },
+    lg:{ body:72, box:94, rArc:38.6, tickIn:42.0, tickOut:45.6, arcW:3.2, tickW:1 }
+  };
+
+  var clamp = function(v,a,b){ return v < a ? a : v > b ? b : v; };
+
+  function polar(c, r, deg){
+    var t = deg * Math.PI / 180;
+    return [ c + r * Math.cos(t), c + r * Math.sin(t) ];
+  }
+
+  function arcPath(c, r, a0, a1){
+    if (Math.abs(a1 - a0) < 0.4) a1 = a0 + 0.4;   /* keep a visible LED dot at the origin */
+    var p0 = polar(c, r, a0), p1 = polar(c, r, a1);
+    var large = Math.abs(a1 - a0) > 180 ? 1 : 0;
+    var sweep = a1 > a0 ? 1 : 0;
+    return "M" + p0[0].toFixed(2) + " " + p0[1].toFixed(2) +
+           "A" + r + " " + r + " 0 " + large + " " + sweep + " " +
+           p1[0].toFixed(2) + " " + p1[1].toFixed(2);
+  }
+
+  /* ------------------------------------------------------------------ knob */
+
+  function MetalKnob(opts){
+    opts = opts || {};
+
+    this.label    = opts.label != null ? opts.label : "";
+    this.unit     = opts.unit != null ? opts.unit : "";
+    this.min      = opts.min != null ? +opts.min : 0;
+    this.max      = opts.max != null ? +opts.max : 1;
+    this.curve    = opts.curve || "lin";
+    this.bipolar  = !!opts.bipolar;
+    this.accent   = (opts.accent === "amber" || opts.accent === "violet") ? opts.accent : "cyan";
+    this.size     = opts.size === "lg" ? "lg" : "md";
+    this.onChange = typeof opts.onChange === "function" ? opts.onChange : null;
+    this.format   = typeof opts.format === "function" ? opts.format : null;
+
+    if (this.curve === "log" && !(this.min > 0 && this.max > 0)) this.curve = "lin";
+
+    var P = this.P = SIZES[this.size];
+    this._value = clamp(opts.value != null ? +opts.value : this.min, this.min, this.max);
+    this._initial = this._value;
+
+    /* ---- DOM ---- */
+    var el = this.el = document.createElement("div");
+    el.className = "sh-knob sh-knob--" + this.size + " sh-knob--" + this.accent;
+
+    var gid = "sh-glow-" + (++uid);
+    var c = P.box / 2;
+
+    var ticks = "";
+    for (var i = 0; i < 11; i++){
+      var a = ARC_START + ARC_SWEEP * (i / 10);
+      var p0 = polar(c, P.tickIn, a), p1 = polar(c, P.tickOut, a);
+      ticks += '<line x1="' + p0[0].toFixed(2) + '" y1="' + p0[1].toFixed(2) +
+               '" x2="' + p1[0].toFixed(2) + '" y2="' + p1[1].toFixed(2) +
+               '" stroke-width="' + P.tickW + '"/>';
+    }
+
+    var dial = this.dial = document.createElement("div");
+    dial.className = "sh-knob-dial";
+    dial.setAttribute("role", "slider");
+    dial.setAttribute("tabindex", "0");
+    dial.setAttribute("aria-orientation", "vertical");
+    dial.setAttribute("aria-valuemin", String(this.min));
+    dial.setAttribute("aria-valuemax", String(this.max));
+    if (this.label) dial.setAttribute("aria-label", this.label);
+
+    dial.innerHTML =
+      '<svg class="sh-knob-svg" width="' + P.box + '" height="' + P.box +
+        '" viewBox="0 0 ' + P.box + ' ' + P.box + '" aria-hidden="true" focusable="false"' +
+        ' shape-rendering="geometricPrecision">' +
+        '<defs><filter id="' + gid + '" filterUnits="userSpaceOnUse" x="-10" y="-10" width="' +
+          (P.box + 20) + '" height="' + (P.box + 20) + '">' +
+          '<feGaussianBlur stdDeviation="' + (P.arcW * 0.8).toFixed(2) + '"/>' +
+        '</filter></defs>' +
+        '<g class="sh-knob-ticks">' + ticks + '</g>' +
+        '<path class="sh-knob-arc-glow" stroke-width="' + (P.arcW * 2.6).toFixed(2) + '"/>' +
+        '<path class="sh-knob-arc-bloom" filter="url(#' + gid + ')" stroke-width="' + (P.arcW * 1.6).toFixed(2) + '"/>' +
+        '<path class="sh-knob-arc" stroke-width="' + P.arcW + '"/>' +
+      '</svg>' +
+      '<div class="sh-knob-halo"></div>' +
+      '<div class="sh-knob-body">' +
+        '<i class="sh-knob-lay"></i>' +
+        '<div class="sh-knob-rot"><i class="sh-knob-ind"></i></div>' +
+      '</div>';
+
+    el.appendChild(dial);
+
+    this.arc   = dial.querySelector(".sh-knob-arc");
+    this.bloom = dial.querySelector(".sh-knob-arc-bloom");
+    this.glow  = dial.querySelector(".sh-knob-arc-glow");
+    this.rot   = dial.querySelector(".sh-knob-rot");
+
+    if (this.size === "lg" && !opts.readout){
+      var scale = document.createElement("div");
+      scale.className = "sh-knob-scale";
+      var marks = opts.scale || [ this._scaleText(this.min),
+                                  this._scaleText((this.min + this.max) / 2),
+                                  this._scaleText(this.max) ];
+      for (var m = 0; m < marks.length; m++){
+        var s = document.createElement("span");
+        s.textContent = marks[m];
+        scale.appendChild(s);
+      }
+      el.appendChild(scale);
+      this.valueEl = null;
+    } else {
+      if (this.label){
+        var lab = document.createElement("div");
+        lab.className = "sh-knob-label";
+        lab.textContent = this.label;
+        el.appendChild(lab);
+      }
+      var val = this.valueEl = document.createElement("div");
+      val.className = "sh-knob-value";
+      el.appendChild(val);
+    }
+
+    this._bind();
+    this._paint();
+  }
+
+  MetalKnob.prototype._scaleText = function(v){
+    var r = Math.round(v * 10) / 10;
+    var s = (Math.abs(r % 1) < 1e-9) ? String(Math.round(r)) : r.toFixed(1);
+    return (this.bipolar && r > 0) ? "+" + s : s;
+  };
+
+  /* value <-> normalised 0..1 ------------------------------------------- */
+
+  MetalKnob.prototype._toNorm = function(v){
+    var min = this.min, max = this.max;
+    if (max === min) return 0;
+    if (this.curve === "log") return Math.log(v / min) / Math.log(max / min);
+    var t = (v - min) / (max - min);
+    if (this.curve === "skew") t = Math.pow(clamp(t, 0, 1), 1 / 2.6);
+    return t;
+  };
+
+  MetalKnob.prototype._fromNorm = function(t){
+    t = clamp(t, 0, 1);
+    var min = this.min, max = this.max;
+    if (this.curve === "log") return min * Math.pow(max / min, t);
+    if (this.curve === "skew") return min + (max - min) * Math.pow(t, 2.6);
+    return min + (max - min) * t;
+  };
+
+  MetalKnob.prototype._text = function(){
+    var v = this._value;
+    if (this.format) return this.format(v);
+    var a = Math.abs(v);
+    var s = a >= 1000 ? v.toFixed(0) : a >= 100 ? v.toFixed(0) : a >= 10 ? v.toFixed(1) : v.toFixed(2);
+    if (this.bipolar && v > 0) s = "+" + s;
+    if (!this.unit) return s;
+    return (this.unit === "%" || this.unit === "°" || this.unit === ":1") ? s + this.unit : s + " " + this.unit;
+  };
+
+  /* paint ---------------------------------------------------------------- */
+
+  MetalKnob.prototype._paint = function(){
+    var P = this.P, c = P.box / 2;
+    var t = clamp(this._toNorm(this._value), 0, 1);
+    var a = ARC_START + ARC_SWEEP * t;
+    var a0 = this.bipolar ? (ARC_START + ARC_SWEEP / 2) : ARC_START;
+    var d = arcPath(c, P.rArc, a0, a);
+
+    this.arc.setAttribute("d", d);
+    this.bloom.setAttribute("d", d);
+    this.glow.setAttribute("d", d);
+    this.rot.style.transform = "rotate(" + (a - 270).toFixed(2) + "deg)";
+
+    var txt = this._text();
+    if (this.valueEl) this.valueEl.textContent = txt;
+    this.dial.setAttribute("aria-valuenow", String(Math.round(this._value * 1e4) / 1e4));
+    this.dial.setAttribute("aria-valuetext", txt);
+  };
+
+  MetalKnob.prototype._apply = function(v, notify){
+    v = clamp(+v, Math.min(this.min, this.max), Math.max(this.min, this.max));
+    if (!isFinite(v)) return;
+    var changed = v !== this._value;
+    this._value = v;
+    this._paint();
+    if (changed && notify !== false && this.onChange) this.onChange(this._value);
+  };
+
+  MetalKnob.prototype.set = function(v, notify){ this._apply(v, notify); return this; };
+
+  Object.defineProperty(MetalKnob.prototype, "value", {
+    get:function(){ return this._value; },
+    set:function(v){ this._apply(v, true); }
+  });
+
+  /* interaction ----------------------------------------------------------- */
+
+  MetalKnob.prototype._nudge = function(dNorm){
+    this._apply(this._fromNorm(clamp(this._toNorm(this._value) + dNorm, 0, 1)), true);
+  };
+
+  MetalKnob.prototype._bind = function(){
+    var self = this, dial = this.dial, drag = null;
+    var tap = { t:0, x:0, y:0 };
+
+    dial.addEventListener("pointerdown", function(e){
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+
+      /* double-click / double-tap resets; done here as well as on dblclick,
+         because preventDefault() below can suppress compatibility events. */
+      var now = Date.now();
+      if (now - tap.t < 320 && Math.abs(e.clientX - tap.x) < 6 && Math.abs(e.clientY - tap.y) < 6){
+        tap.t = 0;
+        self._apply(self._initial, true);
+      } else {
+        tap = { t:now, x:e.clientX, y:e.clientY };
+      }
+
+      drag = { id:e.pointerId, lastY:e.clientY, base:clamp(self._toNorm(self._value), 0, 1), acc:0 };
+      try { dial.setPointerCapture(e.pointerId); } catch(_){}
+      self.el.classList.add("sh-knob--active");
+      if (document.activeElement !== dial) dial.focus({ preventScroll:true });
+      e.preventDefault();
+    });
+
+    dial.addEventListener("pointermove", function(e){
+      if (!drag || e.pointerId !== drag.id) return;
+      var dy = drag.lastY - e.clientY;
+      drag.lastY = e.clientY;
+      drag.acc += (dy / DRAG_TRAVEL) * (e.shiftKey ? FINE : 1);
+      self._apply(self._fromNorm(drag.base + drag.acc), true);
+      e.preventDefault();
+    });
+
+    function end(e){
+      if (!drag || (e && e.pointerId !== drag.id)) return;
+      try { dial.releasePointerCapture(drag.id); } catch(_){}
+      drag = null;
+      self.el.classList.remove("sh-knob--active");
+    }
+    dial.addEventListener("pointerup", end);
+    dial.addEventListener("pointercancel", end);
+    dial.addEventListener("lostpointercapture", end);
+
+    this._onWheel = function(e){
+      e.preventDefault();
+      var dir = (e.deltaY || e.detail || -e.wheelDelta) > 0 ? -1 : 1;
+      self._nudge(dir * (e.shiftKey ? 0.02 * FINE : 0.02));
+    };
+    dial.addEventListener("wheel", this._onWheel, { passive:false });
+
+    dial.addEventListener("dblclick", function(e){
+      e.preventDefault();
+      self._apply(self._initial, true);
+    });
+
+    dial.addEventListener("keydown", function(e){
+      var step = e.shiftKey ? 0.02 * FINE : 0.02;
+      var k = e.key;
+      if (k === "ArrowUp" || k === "ArrowRight")      self._nudge(step);
+      else if (k === "ArrowDown" || k === "ArrowLeft") self._nudge(-step);
+      else if (k === "PageUp")   self._nudge(0.1);
+      else if (k === "PageDown") self._nudge(-0.1);
+      else if (k === "Home")     self._apply(self.min, true);
+      else if (k === "End")      self._apply(self.max, true);
+      else return;
+      e.preventDefault();
+    });
+  };
+
+  MetalKnob.prototype.destroy = function(){
+    this.dial.removeEventListener("wheel", this._onWheel);
+    if (this.el.parentNode) this.el.parentNode.removeChild(this.el);
+  };
+
+  /* ------------------------------------------------- filter-shape buttons */
+
+  var GLYPHS = {
+    lowshelf : "M1.5 4.6H5.4C8.4 4.6 8.4 11.4 11.4 11.4H20.5",
+    bell     : "M1.5 11.6H5.6C8.3 11.6 8.1 4.2 10.9 4.2C13.7 4.2 13.5 11.6 16.2 11.6H20.5",
+    highshelf: "M1.5 11.4H10.6C13.6 11.4 13.6 4.6 16.6 4.6H20.5",
+    cut      : "M1.5 14.2H7.6L11.6 3.8H20.5"
+  };
+  var GLYPH_ORDER = ["lowshelf", "bell", "highshelf", "cut"];
+  var GLYPH_TITLE = { lowshelf:"Low shelf", bell:"Bell", highshelf:"High shelf", cut:"Cut" };
+
+  function shapeIcon(name){
+    return '<svg viewBox="0 0 22 16" aria-hidden="true" focusable="false"><path d="' +
+           (GLYPHS[name] || GLYPHS.bell) + '"/></svg>';
+  }
+
+  function makeShapeButtons(opts){
+    opts = opts || {};
+    var shapes = opts.shapes || GLYPH_ORDER;
+    var idx = opts.value != null ? opts.value : (opts.active != null ? opts.active : 0);
+
+    var el = document.createElement("div");
+    el.className = "sh-shapes";
+    el.setAttribute("role", "group");
+    if (opts.label) el.setAttribute("aria-label", opts.label);
+
+    var btns = shapes.map(function(name, i){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "sh-shape-btn";
+      b.innerHTML = shapeIcon(name);
+      b.title = GLYPH_TITLE[name] || name;
+      b.setAttribute("aria-label", GLYPH_TITLE[name] || name);
+      b.addEventListener("click", function(){ api.set(i, true); });
+      el.appendChild(b);
+      return b;
+    });
+
+    var api = {
+      el:el,
+      value:idx,
+      shapes:shapes,
+      set:function(i, notify){
+        i = clamp(i | 0, 0, btns.length - 1);
+        var changed = i !== api.value;
+        api.value = i;
+        for (var n = 0; n < btns.length; n++){
+          var on = n === i;
+          btns[n].classList.toggle("sh-on", on);
+          btns[n].setAttribute("aria-pressed", on ? "true" : "false");
+        }
+        if (changed && notify && typeof opts.onChange === "function") opts.onChange(i, shapes[i]);
+        return api;
+      }
+    };
+    el.__ctl = api;
+    return api.set(idx, false);
+  }
+
+  /* ---------------------------------------------------------- pill toggle */
+
+  function makePill(opts){
+    opts = opts || {};
+    var el = document.createElement("button");
+    el.type = "button";
+    el.className = "sh-pill";
+    el.innerHTML = '<span class="sh-pill-dot"></span><span class="sh-pill-txt"></span>';
+    el.querySelector(".sh-pill-txt").textContent = opts.label || "";
+
+    var api = {
+      el:el,
+      value:!!opts.on,
+      set:function(on, notify){
+        on = !!on;
+        var changed = on !== api.value;
+        api.value = on;
+        el.classList.toggle("sh-on", on);
+        el.setAttribute("aria-pressed", on ? "true" : "false");
+        if (changed && notify && typeof opts.onChange === "function") opts.onChange(on);
+        return api;
+      },
+      toggle:function(){ return api.set(!api.value, true); }
+    };
+    el.addEventListener("click", function(){ api.toggle(); });
+    el.__ctl = api;
+    return api.set(!!opts.on, false);
+  }
+
+  /* ----------------------------------------------------- segmented select */
+
+  function makeSegmented(opts){
+    opts = opts || {};
+    var options = (opts.options || []).map(function(o){
+      return (typeof o === "string") ? { label:o, value:o } : { label:o.label, value:o.value != null ? o.value : o.label };
+    });
+    var idx = opts.value != null ? opts.value : (opts.active != null ? opts.active : 0);
+    if (typeof idx !== "number"){
+      var found = options.findIndex(function(o){ return o.value === idx; });
+      idx = found < 0 ? 0 : found;
+    }
+
+    var el = document.createElement("div");
+    el.className = "sh-seg";
+    el.setAttribute("role", "group");
+    if (opts.label) el.setAttribute("aria-label", opts.label);
+
+    var btns = options.map(function(o, i){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "sh-seg-btn";
+      b.textContent = o.label;
+      b.addEventListener("click", function(){ api.set(i, true); });
+      el.appendChild(b);
+      return b;
+    });
+
+    var api = {
+      el:el,
+      value:idx,
+      options:options,
+      set:function(i, notify){
+        i = clamp(i | 0, 0, btns.length - 1);
+        var changed = i !== api.value;
+        api.value = i;
+        for (var n = 0; n < btns.length; n++){
+          var on = n === i;
+          btns[n].classList.toggle("sh-on", on);
+          btns[n].setAttribute("aria-pressed", on ? "true" : "false");
+        }
+        if (changed && notify && typeof opts.onChange === "function") opts.onChange(i, options[i].value);
+        return api;
+      }
+    };
+    el.__ctl = api;
+    return api.set(idx, false);
+  }
+
+  window.MetalKnob = MetalKnob;
+  window.makeShapeButtons = makeShapeButtons;
+  window.makePill = makePill;
+  window.makeSegmented = makeSegmented;
+})();
+</script>
+
+<script>
+/* ==================================================================
+   SHAPE — wiring
+   Binds the control components to engine state. Every readout on screen
+   is derived from state; nothing is hard-coded markup.
+   ================================================================== */
+"use strict";
+
+var KNOBS = {};
+var SEGS = {};
+
+/* ---------- knob definitions ----------------------------------- */
+var KNOB_DEFS = {
+  frequency: {
+    label: "Frequency", min: 20, max: 20000, curve: "log", accent: "cyan", def: 1000,
+    get: function () { return selBand().freq; },
+    set: function (v) { selBand().freq = v; },
+    format: function (v) { return fmtFreq(v); }
+  },
+  gain: {
+    label: "Gain", min: -24, max: 24, curve: "lin", bipolar: true, accent: "amber", def: 0,
+    get: function () { return selBand().gain; },
+    set: function (v) { selBand().gain = v; },
+    format: function (v) { return fmtDb(v); }
+  },
+  q: {
+    label: "Q", min: 0.1, max: 100, curve: "log", accent: "cyan", def: 1,
+    get: function () { return selBand().q; },
+    set: function (v) { selBand().q = v; },
+    format: function (v) { return v < 10 ? v.toFixed(2) : v.toFixed(1); }
+  },
+  threshold: {
+    label: "Threshold", min: -60, max: 0, curve: "lin", accent: "violet", def: -24,
+    get: function () { return selBand().dyn.threshold; },
+    set: function (v) { selBand().dyn.threshold = v; },
+    format: function (v) { return v.toFixed(1) + " dB"; }
+  },
+  range: {
+    label: "Range", min: -18, max: 18, curve: "lin", bipolar: true, accent: "violet", def: -6,
+    get: function () { return selBand().dyn.range; },
+    set: function (v) { selBand().dyn.range = v; },
+    format: function (v) { return fmtDb(v); }
+  },
+  attack: {
+    label: "Attack", min: 0.1, max: 500, curve: "log", accent: "violet", def: 10,
+    get: function () { return selBand().dyn.attack; },
+    set: function (v) { selBand().dyn.attack = v; },
+    format: function (v) { return (v < 10 ? v.toFixed(1) : v.toFixed(0)) + " ms"; }
+  },
+  release: {
+    label: "Release", min: 5, max: 5000, curve: "log", accent: "violet", def: 120,
+    get: function () { return selBand().dyn.release; },
+    set: function (v) { selBand().dyn.release = v; },
+    format: function (v) { return v < 1000 ? v.toFixed(0) + " ms" : (v / 1000).toFixed(2) + " s"; }
+  },
+  input: {
+    label: "Input", min: -24, max: 24, curve: "lin", bipolar: true, accent: "cyan", size: "lg", def: 0,
+    get: function () { return ST.input; },
+    set: function (v) { ST.input = v; },
+    format: function (v) { return fmtDb(v); }
+  },
+  output: {
+    label: "Output", min: -24, max: 24, curve: "lin", bipolar: true, accent: "cyan", size: "lg", def: 0,
+    get: function () { return ST.output; },
+    set: function (v) { ST.output = v; },
+    format: function (v) { return fmtDb(v); }
+  }
+};
+
+/* ---------- small helpers -------------------------------------- */
+function $(sel, root) { return (root || document).querySelector(sel); }
+function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+function press(el, on) { if (el) el.setAttribute("aria-pressed", on ? "true" : "false"); }
+
+/* Build a segmented control into a mount. Emits markup that satisfies
+   either `.sh-seg button` or `.sh-seg-btn` styling conventions. */
+var SHAPE_MAP = ["lowshelf", "bell", "highshelf", "lowcut"];
+
+function buildSegmented(mount, options, getter, setter) {
+  var values = options.map(function (o) { return o.v; });
+  var api = makeSegmented({
+    options: options.map(function (o) { return { label: o.label, value: o.v }; }),
+    value: Math.max(0, values.indexOf(getter())),
+    onChange: function (i, v) { commit(function () { setter(v); }); syncAll(); }
+  });
+  mount.appendChild(api.el);
+  api._sync = function () {
+    var i = values.indexOf(getter());
+    if (i >= 0) api.set(i, false);
+  };
+  return api;
+}
+
+/* ---------- build ---------------------------------------------- */
+function buildControls() {
+  /* --- knobs --- */
+  $$(".sh-knobmount").forEach(function (mount) {
+    var key = mount.dataset.knob;
+    var d = KNOB_DEFS[key];
+    if (!d) return;
+    var k = new MetalKnob({
+      label: d.label,
+      min: d.min, max: d.max,
+      value: d.get(),
+      curve: d.curve || "lin",
+      bipolar: !!d.bipolar,
+      accent: d.accent,
+      size: mount.dataset.size || d.size || "md",
+      format: d.format,
+      onChange: function (v) { d.set(v); syncReadouts(); }
+    });
+    /* group a whole drag into one undo entry */
+    k.el.addEventListener("pointerdown", beginGesture);
+    k.el.addEventListener("pointerup", endGesture);
+    k.el.addEventListener("dblclick", function () {
+      commit(function () { d.set(d.def); });
+      syncAll();
+    });
+    mount.appendChild(k.el);
+    KNOBS[key] = k;
+  });
+
+  /* --- DYNAMIC pill --- */
+  $$(".sh-pillmount").forEach(function (mount) {
+    var api = makePill({
+      label: "Dynamic",
+      on: selBand().dyn.on,
+      onChange: function (on) {
+        commit(function () {
+          var sb = selBand();
+          sb.dyn.on = on;
+          if (!on) sb.dyn.cur = 0;
+        });
+        syncAll();
+      }
+    });
+    mount.appendChild(api.el);
+    KNOBS._dynPill = api;
+  });
+
+  /* --- segmented groups --- */
+  var segPhase = $('.sh-segmount[data-seg="phase"]');
+  if (segPhase) SEGS.phase = buildSegmented(segPhase,
+    [{ v: "zero", label: "Zero" }, { v: "natural", label: "Natural" }, { v: "linear", label: "Linear" }],
+    function () { return ST.phase; }, function (v) { ST.phase = v; });
+
+  var segScale = $('.sh-segmount[data-seg="scale"]');
+  if (segScale) SEGS.scale = buildSegmented(segScale,
+    [{ v: "12", label: "12 dB" }, { v: "6", label: "6 dB" }],
+    function () { return String(ST.fineScale); }, function (v) { ST.fineScale = +v; });
+
+  var segMode = $('.sh-segmount[data-seg="mode"]');
+  if (segMode) SEGS.mode = buildSegmented(segMode,
+    [{ v: "clean", label: "Clean" }, { v: "analog", label: "Analog" }, { v: "precision", label: "Precision" }],
+    function () { return ST.mode; }, function (v) { ST.mode = v; });
+
+  /* --- filter shape buttons --- */
+  var shapeRow = $(".sh-shapebtns");
+  if (shapeRow) {
+    var shapeApi = makeShapeButtons({
+      label: "Filter shape",
+      value: Math.max(0, SHAPE_MAP.indexOf(selBand().type)),
+      onChange: function (i) {
+        commit(function () {
+          var sb = selBand();
+          sb.type = SHAPE_MAP[i] || "bell";
+          if (!TYPES[sb.type].gain) sb.gain = 0;
+        });
+        syncAll();
+      }
+    });
+    shapeRow.appendChild(shapeApi.el);
+    KNOBS._shapes = shapeApi;
+  }
+
+  /* --- type dropdown --- */
+  var sel = $(".sh-select");
+  if (sel) {
+    sel.innerHTML = "";
+    Object.keys(TYPES).forEach(function (k) {
+      var o = document.createElement("option");
+      o.value = k; o.textContent = TYPES[k].label;
+      sel.appendChild(o);
+    });
+    sel.addEventListener("change", function () {
+      commit(function () {
+        var sb = selBand();
+        sb.type = sel.value;
+        if (!TYPES[sb.type].gain) sb.gain = 0;
+        if (sb.type === "notch" && sb.q < 4) sb.q = 12;
+      });
+      syncAll();
+    });
+  }
+
+  /* --- band prev / next --- */
+  $$("[data-band-nav]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var d = b.dataset.bandNav === "next" ? 1 : -1;
+      ST.selected = (ST.selected + d + ST.bands.length) % ST.bands.length;
+      syncAll();
+    });
+  });
+
+  /* --- graph toolbar --- */
+  $$("#sh-tabs button").forEach(function (b) {
+    b.addEventListener("click", function () { ST.tab = b.dataset.tab; syncAll(); });
+  });
+  $$("#sh-anbtns button[data-an]").forEach(function (b) {
+    b.addEventListener("click", function () { ST.analyzerMode = b.dataset.an; syncAll(); });
+  });
+  var anToggle = $("#sh-an-toggle");
+  if (anToggle) anToggle.addEventListener("click", function () {
+    ST.analyzerOn = !ST.analyzerOn; syncAll();
+  });
+
+  /* --- right-hand button column --- */
+  var soloBtn = $("[data-act='solo']"), powBtn = $("[data-act='power']"), scBtn = $("[data-act='sc']");
+  if (soloBtn) soloBtn.addEventListener("click", function () { commit(function () { ST.solo = !ST.solo; }); syncAll(); });
+  if (powBtn) powBtn.addEventListener("click", function () { commit(function () { ST.power = !ST.power; }); syncAll(); });
+  if (scBtn) scBtn.addEventListener("click", function () { commit(function () { ST.sidechain = !ST.sidechain; }); syncAll(); });
+
+  /* --- header: presets, A/B --- */
+  var prev = $("[data-preset='prev']"), next = $("[data-preset='next']"), fav = $("[data-preset='fav']");
+  if (prev) prev.addEventListener("click", function () { loadPreset(ST.presetIndex - 1); });
+  if (next) next.addEventListener("click", function () { loadPreset(ST.presetIndex + 1); });
+  if (fav) fav.addEventListener("click", function () {
+    fav.setAttribute("aria-pressed", fav.getAttribute("aria-pressed") === "true" ? "false" : "true");
+  });
+  $$("[data-slot]").forEach(function (b) {
+    b.addEventListener("click", function () { commit(function () { ST.slot = b.dataset.slot; }); syncAll(); });
+  });
+}
+
+/* ---------- sync ----------------------------------------------- */
+/* cheap: called every frame and during drags */
+function syncReadouts() {
+  for (var k in KNOBS) {
+    if (k.charAt(0) === "_") continue;
+    var d = KNOB_DEFS[k];
+    if (d && KNOBS[k] && !KNOBS[k].dragging) KNOBS[k].set(d.get());
+  }
+}
+function syncBandControls() { syncReadouts(); }
+
+/* full: called on structural changes */
+function syncAll() {
+  var b = selBand();
+  if (!b) return;
+  var ty = TYPES[b.type];
+
+  /* band identity */
+  var num = $("[data-band-number]");
+  if (num) num.textContent = "BAND " + (ST.selected + 1);
+
+  /* type dropdown + shape buttons */
+  var sel = $(".sh-select");
+  if (sel) sel.value = b.type;
+  if (KNOBS._shapes) {
+    var si = SHAPE_MAP.indexOf(b.type);
+    if (si >= 0) KNOBS._shapes.set(si, false);
+  }
+
+  /* knob availability — controls that do nothing are not offered */
+  setKnobEnabled("gain", ty.gain);
+  setKnobEnabled("q", ty.q);
+  ["threshold", "range", "attack", "release"].forEach(function (k) {
+    setKnobEnabled(k, b.dyn.on);
+  });
+
+  /* dynamic pill */
+  if (KNOBS._dynPill) KNOBS._dynPill.set(b.dyn.on, false);
+
+  /* segmented groups */
+  for (var s in SEGS) if (SEGS[s] && SEGS[s]._sync) SEGS[s]._sync();
+
+  /* graph toolbar */
+  $$("#sh-tabs button").forEach(function (x) { press(x, x.dataset.tab === ST.tab); });
+  $$("#sh-anbtns button[data-an]").forEach(function (x) { press(x, x.dataset.an === ST.analyzerMode); });
+  var anToggle = $("#sh-an-toggle");
+  if (anToggle) press(anToggle, ST.analyzerOn);
+
+  /* right column */
+  toggleAct("solo", ST.solo);
+  toggleAct("power", ST.power);
+  toggleAct("sc", ST.sidechain);
+
+  /* header */
+  var p = PRESETS[ST.presetIndex];
+  var pn = $("[data-preset-name]"), pt = $("[data-preset-tag]");
+  if (pn) pn.textContent = p.name;
+  if (pt) pt.textContent = p.tag;
+  $$("[data-slot]").forEach(function (x) {
+    var on = x.dataset.slot === ST.slot;
+    press(x, on);
+    x.classList.toggle("is-on", on);
+  });
+
+  syncReadouts();
+}
+
+function setKnobEnabled(key, on) {
+  var k = KNOBS[key];
+  if (!k || !k.el) return;
+  k.el.classList.toggle("is-disabled", !on);
+  k.el.setAttribute("aria-disabled", on ? "false" : "true");
+  if (k.el.style) { k.el.style.opacity = on ? "" : "0.32"; k.el.style.pointerEvents = on ? "" : "none"; }
+}
+function toggleAct(name, on) {
+  var el = $("[data-act='" + name + "']");
+  if (!el) return;
+  press(el, on);
+  el.classList.toggle("is-on", on);
+}
+
+</script>
+
+<script>
+(function(){
+  function go(){ try { bootEngine(); } catch(e){ console.error("SHAPE boot failed:", e); } }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", go);
+  else go();
+})();
+</script>
