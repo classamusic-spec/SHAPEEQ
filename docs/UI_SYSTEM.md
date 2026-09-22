@@ -62,6 +62,29 @@ reference puts them and where band 3's −4.8 dB reads −4.8.
 **Nodes** sit on the composite curve, as the reference draws them.
 Dragging is relative, so a node propped up by a neighbour never jumps.
 
+## 3a. Layout and knobs — the family discipline
+
+Layout and knobs follow the family's HEAT reference
+(`design/reference/HEAT_FAMILY_REFERENCE.webp`); the display is untouched.
+
+- **One plate, divided by milled grooves.** No inset panels. A groove runs
+  under the header and between the band and bottom sections; vertical
+  grooves separate every group.
+- **Every row shares one centre line.** Each band group has a 30px header
+  line — band identity, a FILTER caption, the DYNAMIC toggle — over a
+  128px control row, so all seven band knobs sit level at a single 118px
+  pitch. In the bottom section the PHASE / SCALE / MODE pills sit exactly
+  on the I/O knobs' centre, their captions riding above them.
+- **Header:** wordmark, hairline rule, two-line descriptor beside it.
+- **Knobs sit flush on the plate.** A flat lathe-turned cap with an
+  anisotropic conic sheen, on a cylinder wall, throwing a soft shadow. No
+  recessed collar. The value is a rim glow spilling from the knob's edge
+  (cyan, amber or violet by role); a long dark indicator runs in from the
+  rim. Labels sit above the knob, the readout below. Two sizes only: 62px
+  for every band knob, 84px for I/O.
+- The cap's fine texture is a noise grain, not concentric rings: rings at
+  this size alias into radial spokes.
+
 ## 4. Colour
 
 Semantic roles only; values in `ShapeTheme.h`.

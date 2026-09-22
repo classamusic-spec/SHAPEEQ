@@ -35,13 +35,14 @@
 
 .sh-knob{
   --sh-accent:var(--cyan);
-  --sh-body:52px;          /* knob body diameter                */
-  --sh-box:70px;           /* dial field: body + arc + tick ring */
-  --sh-ind-w:2px;
-  --sh-ind-h:20px;
-  --sh-ind-top:3px;
+  --sh-body:62px;          /* the machined cap                         */
+  --sh-skirt:70px;         /* the cylinder wall the cap sits on         */
+  --sh-box:98px;           /* dial field: skirt + rim glow + ticks      */
+  --sh-ind-w:2.4px;
+  --sh-ind-h:24px;
+  --sh-ind-top:5px;
 
-  width:96px;
+  width:112px;
   display:flex;
   flex-direction:column;
   align-items:center;
@@ -50,23 +51,15 @@
   user-select:none;
   -webkit-tap-highlight-color:transparent;
 }
-
-.sh-knob--sm{
-  --sh-body:58px; --sh-box:86px;
-  --sh-ind-w:2.4px; --sh-ind-h:22px; --sh-ind-top:4px;
-  width:104px;
-}
-.sh-knob--xl{
-  --sh-body:76px; --sh-box:108px;
-  --sh-ind-w:2.8px; --sh-ind-h:30px; --sh-ind-top:5px;
-  width:124px;
-}
 .sh-knob--lg{
-  --sh-body:76px; --sh-box:108px;
-  --sh-ind-w:3px; --sh-ind-h:30px; --sh-ind-top:5px;
-  width:124px;
+  --sh-body:84px;
+  --sh-skirt:94px;
+  --sh-box:126px;
+  --sh-ind-w:3px;
+  --sh-ind-h:33px;
+  --sh-ind-top:6px;
+  width:140px;
 }
-
 .sh-knob--cyan  { --sh-accent:var(--cyan);   }
 .sh-knob--amber { --sh-accent:var(--amber);  }
 .sh-knob--violet{ --sh-accent:var(--violet); }
@@ -74,6 +67,7 @@
 /* the interactive field ----------------------------------------------------*/
 .sh-knob-dial{
   position:relative;
+  isolation:isolate;
   width:var(--sh-box);
   height:var(--sh-box);
   border-radius:50%;
@@ -81,216 +75,139 @@
   touch-action:none;
   outline:none;
 }
-.sh-knob-dial:focus-visible{
-  outline:2px solid var(--sh-accent);
-  outline-offset:1px;
-}
+.sh-knob-dial:focus-visible .sh-knob-body{ box-shadow:0 0 0 2px var(--sh-accent), inset 0 1px 1px rgba(255,255,255,.9); }
 .sh-knob--active .sh-knob-dial{ cursor:grabbing; }
 
-/* the recessed collar around the cap, where the LED arc lives ---------------*/
+/* the cylinder wall, and the shadow the knob throws on the plate. The knob
+   sits flush on the faceplate — there is no recess or collar under it.   */
 .sh-knob-dial::before{
-  content:""; position:absolute; left:50%; top:50%;
-  width:calc(var(--sh-body) + 17px); height:calc(var(--sh-body) + 17px);
-  margin:calc((var(--sh-body) + 17px) / -2) 0 0 calc((var(--sh-body) + 17px) / -2);
+  content:"";
+  position:absolute; left:50%; top:50%; z-index:1;
+  width:var(--sh-skirt); height:var(--sh-skirt);
+  margin:calc(var(--sh-skirt) / -2) 0 0 calc(var(--sh-skirt) / -2);
   border-radius:50%;
-  background:radial-gradient(circle closest-side, #6E767F 0%, #8C939B 70%, #A7ADB4 88%, #D4D8DC 100%);
+  background:linear-gradient(180deg, #F4F5F6 0%, #D3D7DB 34%, #A3AAB1 72%, #858C94 100%);
   box-shadow:
-    inset 0 2px 3px rgba(0,0,0,.45),
-    inset 0 -1px 1px rgba(255,255,255,.35),
-    0 1px 0 rgba(255,255,255,.75);
+    0 0 0 1px rgba(48,54,62,.40),
+    0 2px 2px rgba(0,0,0,.26),
+    0 7px 12px rgba(0,0,0,.24),
+    0 16px 26px rgba(0,0,0,.10);
 }
 
-/* ticks + value arc --------------------------------------------------------*/
+/* rim light: the value, as a glow spilling from around the knob's edge ---*/
 .sh-knob-svg{
-  position:absolute;
-  inset:0;
-  overflow:visible;
-  pointer-events:none;
-  display:block;
+  position:absolute; inset:0; z-index:0;
+  overflow:visible; pointer-events:none; display:block;
 }
-.sh-knob-ticks line{
-  stroke:rgba(30,36,44,.42);
-  stroke-linecap:butt;
-}
+.sh-knob-ticks line{ stroke:rgba(36,41,48,.40); stroke-linecap:round; }
 .sh-knob-arc,
 .sh-knob-arc-glow,
-.sh-knob-arc-bloom{
-  fill:none;
-  stroke:var(--sh-accent);
-  stroke-linecap:round;
-}
-.sh-knob-arc-bloom{ opacity:.75; }
-.sh-knob-arc-glow { opacity:.22; }
-.sh-knob-svg{ z-index:1; }
+.sh-knob-arc-bloom{ fill:none; stroke:var(--sh-accent); stroke-linecap:round; }
+.sh-knob-arc      { opacity:.95; }
+.sh-knob-arc-bloom{ opacity:.85; }
+.sh-knob-arc-glow { opacity:.50; }
 
-/* accent light bouncing off the chassis around the base --------------------*/
 .sh-knob-halo{
-  position:absolute;
-  inset:-6px;
+  position:absolute; left:50%; top:50%; z-index:0; pointer-events:none;
+  width:calc(var(--sh-skirt) + 16px); height:calc(var(--sh-skirt) + 16px);
+  margin:calc((var(--sh-skirt) + 16px) / -2) 0 0 calc((var(--sh-skirt) + 16px) / -2);
   border-radius:50%;
-  pointer-events:none;
-  background:radial-gradient(circle closest-side, var(--sh-accent) 58%, rgba(0,0,0,0) 76%);
-  opacity:.07;
-  filter:blur(8px);
+  background:radial-gradient(circle closest-side, var(--sh-accent) 60%, rgba(0,0,0,0) 100%);
+  opacity:0; filter:blur(6px);
+  transition:opacity 160ms ease;
 }
-.sh-knob--lg .sh-knob-halo{ opacity:.16; }
-.sh-knob-dial:hover .sh-knob-halo,
-.sh-knob--active .sh-knob-halo{ opacity:.2; }
+.sh-knob-dial:hover .sh-knob-halo{ opacity:.10; }
+.sh-knob--active .sh-knob-halo{ opacity:.18; }
 
-/* the machined body --------------------------------------------------------*/
+/* the cap: a flat, lathe-turned face. A conic sheen gives the anisotropic
+   brushing — two bright and two dark lobes — with fine turning rings over it */
 .sh-knob-body{
-  position:absolute;
-  left:50%; top:50%;
-  width:var(--sh-body);
-  height:var(--sh-body);
+  position:absolute; left:50%; top:50%; z-index:2;
+  width:var(--sh-body); height:var(--sh-body);
   margin:calc(var(--sh-body) / -2) 0 0 calc(var(--sh-body) / -2);
   border-radius:50%;
   isolation:isolate;
-  z-index:2;
-  /* top layer: the concentric chamfer the lathe leaves; under it, the dome */
+  overflow:hidden;
+  /* no concentric ring pattern: at this size it aliases into radial spokes */
   background:
-    radial-gradient(circle closest-side,
-      rgba(0,0,0,0) 76%,
-      rgba(54,62,72,.20) 92%,
-      rgba(255,255,255,.34) 100%),
-    radial-gradient(circle at 42% 34%,
-      #FFFFFF 0%,
-      #ECEEF0 26%,
-      #CDD2D7 58%,
-      #A9B0B7 86%,
-      #C9CED3 100%);
+    radial-gradient(circle at 50% 50%, rgba(255,255,255,0) 62%, rgba(40,46,54,.14) 100%),
+    conic-gradient(from 0deg,
+      #DDE1E4   0deg, #F9FAFA  26deg, #D4D8DC  60deg, #A2A9B0 106deg, #C3C8CD 146deg,
+      #EBEDEF 190deg, #FBFBFC 212deg, #CFD3D7 248deg, #A5ACB3 290deg, #C7CCD1 330deg, #DDE1E4 360deg);
   box-shadow:
-      0 0 0 1px rgba(40,46,54,.45),
-      0 3px 6px rgba(0,0,0,.35),
-      0 8px 14px rgba(0,0,0,.16),
-      inset 0 1px 1px rgba(255,255,255,.85),
-      inset 0 -2px 3px rgba(0,0,0,.16),
-      inset 0 0 9px rgba(84,93,105,.26);   /* pulls the dome flat, as a machined face is */
+    inset 0 1px 1px rgba(255,255,255,.95),
+    inset 0 -1px 1px rgba(0,0,0,.20),
+    0 0 0 1px rgba(62,68,76,.50);
 }
-
-/* micro grain — the anodised tooth of the metal */
+/* the fine tooth of turned aluminium, as a grain rather than rings */
 .sh-knob-body::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  z-index:1;
-  border-radius:50%;
-  background:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='90' height='90'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='90' height='90' filter='url(%23n)'/></svg>");
-  background-size:90px 90px;
-  mix-blend-mode:overlay;
-  opacity:.42;
-  -webkit-mask:radial-gradient(circle closest-side,
-      rgba(0,0,0,.45) 0 12%, #000 34%, #000 84%, rgba(0,0,0,.55) 100%);
-  mask:radial-gradient(circle closest-side,
-      rgba(0,0,0,.45) 0 12%, #000 34%, #000 84%, rgba(0,0,0,.55) 100%);
+  content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none;
+  background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='120' height='120' filter='url(%23n)'/></svg>");
+  background-size:120px 120px;
+  mix-blend-mode:overlay; opacity:.28;
 }
-
-/* the circular lay left by the lathe, only where it can resolve cleanly */
-.sh-knob-lay{
-  position:absolute;
-  inset:0;
-  z-index:2;
-  border-radius:50%;
-  pointer-events:none;
-  background:repeating-conic-gradient(from 0deg,
-      rgba(255,255,255,.95) 0deg .55deg,
-      rgba(255,255,255,0)   .55deg 1.20deg,
-      rgba(0,0,0,.95)       1.20deg 1.75deg,
-      rgba(0,0,0,0)         1.75deg 2.55deg);
-  mix-blend-mode:overlay;
-  opacity:.15;
-  -webkit-mask:radial-gradient(circle closest-side,
-      rgba(0,0,0,0) 0 48%, #000 74%, #000 88%, rgba(0,0,0,.40) 100%);
-  mask:radial-gradient(circle closest-side,
-      rgba(0,0,0,0) 0 48%, #000 74%, #000 88%, rgba(0,0,0,.40) 100%);
-}
-
-/* anisotropic glint riding the rim */
+/* a soft specular bloom where the studio light lands */
 .sh-knob-body::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  z-index:3;
-  border-radius:50%;
-  /* the anisotropic sheen of a concentrically brushed cap: two bright
-     wedges facing the light, two dark ones across from them            */
-  background:conic-gradient(from 0deg,
-      rgba(255,255,255,.00)   0deg,
-      rgba(255,255,255,.55)  32deg,
-      rgba(255,255,255,.00)  70deg,
-      rgba(40,48,58,.22)    120deg,
-      rgba(255,255,255,.00) 165deg,
-      rgba(255,255,255,.40) 212deg,
-      rgba(255,255,255,.00) 250deg,
-      rgba(40,48,58,.26)    300deg,
-      rgba(255,255,255,.00) 360deg);
-  -webkit-mask:radial-gradient(circle closest-side, rgba(0,0,0,.35) 0 18%, #000 60%, #000 100%);
-  mask:radial-gradient(circle closest-side, rgba(0,0,0,.35) 0 18%, #000 60%, #000 100%);
+  content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none;
+  background:radial-gradient(ellipse 70% 55% at 34% 24%, rgba(255,255,255,.32), rgba(255,255,255,0) 70%);
 }
 
-/* indicator ---------------------------------------------------------------*/
+/* indicator: a long dark line running in from the rim */
 .sh-knob-rot{
-  position:absolute;
-  inset:0;
-  z-index:4;
+  position:absolute; inset:0; z-index:3;
   transform:rotate(-135deg);
   will-change:transform;
 }
 .sh-knob-ind{
-  position:absolute;
-  left:50%;
-  top:var(--sh-ind-top);
-  width:var(--sh-ind-w);
-  height:var(--sh-ind-h);
+  position:absolute; left:50%; top:var(--sh-ind-top);
+  width:var(--sh-ind-w); height:var(--sh-ind-h);
   margin-left:calc(var(--sh-ind-w) / -2);
   border-radius:calc(var(--sh-ind-w) / 2);
-  background:linear-gradient(180deg,#1C2026,#3A4048);
+  background:#23272D;
   box-shadow:.6px .6px 0 rgba(255,255,255,.55);
 }
 
-/* label + readout ---------------------------------------------------------*/
+/* label above, readout below, as across the family ------------------------*/
 .sh-knob-label{
-  margin-top:4px;
+  margin-bottom:-4px;
   font-size:10.5px;
   font-weight:500;
-  letter-spacing:.16em;
+  letter-spacing:.2em;
+  margin-right:-.2em;
   text-transform:uppercase;
-  color:var(--ink2);
+  color:#2B3138;
   white-space:nowrap;
   text-align:center;
+  line-height:1.2;
 }
 .sh-knob-value{
-  margin-top:4px;
-  font-size:14px;
+  margin-top:-4px;
+  font-size:13px;
   font-weight:500;
-  color:var(--ink);
+  color:#262B33;
   font-variant-numeric:tabular-nums;
   white-space:nowrap;
   text-align:center;
+  line-height:1.2;
 }
 
-/* large variant: a three-stop scale instead of the label / readout stack ---*/
+/* large variant: a three-stop scale beneath, following the arc ------------*/
 .sh-knob-scale{
-  margin-top:-2px;
-  width:calc(var(--sh-box) + 14px);
+  margin-top:-14px;
+  width:calc(var(--sh-box) + 8px);
   display:flex;
   justify-content:space-between;
-  font-size:11.5px;
+  font-size:11px;
   font-weight:400;
   letter-spacing:.02em;
   color:#3A4148;
   font-variant-numeric:tabular-nums;
 }
-.sh-knob-scale span:nth-child(2){ margin-top:8px; }
 .sh-knob-scale span{ line-height:1; }
-.sh-knob-scale span:nth-child(2){ transform:translateX(.5px); }
+.sh-knob-scale span:nth-child(2){ margin-top:12px; }
 
 @media (prefers-reduced-motion: no-preference){
-  .sh-knob:not(.sh-knob--active) .sh-knob-rot{
-    transition:transform 110ms cubic-bezier(.22,.61,.36,1);
-  }
-  .sh-knob-halo{ transition:opacity 140ms ease; }
+  .sh-knob:not(.sh-knob--active) .sh-knob-rot{ transition:transform 110ms cubic-bezier(.22,.61,.36,1); }
 }
 
 /* --------------------------------------------------------------------------
@@ -459,12 +376,14 @@
 
   /* body = the machined cap; the LED arc runs in the recessed collar just
      outside it; the tick ring sits beyond that. Sized from the reference. */
+  /* body = the cap; skirt = the cylinder wall under it; the rim light runs
+     just outside the skirt; ticks sit beyond that. Only two sizes, so every
+     knob in a row sits on the same centre line.                          */
   var SIZES = {
-    md:{ body:52, box:74,  rArc:30.0, tickIn:33.5, tickOut:36.5, arcW:2.5, tickW:1.1 },
-    sm:{ body:58, box:86,  rArc:33.4, tickIn:37.5, tickOut:41.5, arcW:2.6, tickW:1.2 },
-    xl:{ body:76, box:108, rArc:42.8, tickIn:47.5, tickOut:52.0, arcW:3.0, tickW:1.3 },
-    lg:{ body:76, box:108, rArc:42.8, tickIn:47.5, tickOut:52.0, arcW:3.2, tickW:1.3 }
+    md:{ body:62, skirt:70, box:98,  rArc:36.4, tickIn:41.0, tickOut:44.6, arcW:2.2, ticks:11 },
+    lg:{ body:84, skirt:94, box:126, rArc:48.6, tickIn:0,    tickOut:0,    arcW:2.8, ticks:0  }
   };
+  SIZES.sm = SIZES.md; SIZES.xl = SIZES.md;
 
   var clamp = function(v,a,b){ return v < a ? a : v > b ? b : v; };
 
@@ -495,7 +414,7 @@
     this.curve    = opts.curve || "lin";
     this.bipolar  = !!opts.bipolar;
     this.accent   = (opts.accent === "amber" || opts.accent === "violet") ? opts.accent : "cyan";
-    this.size     = SIZES[opts.size] ? opts.size : "md";
+    this.size     = opts.size === "lg" ? "lg" : "md";
     this.onChange = typeof opts.onChange === "function" ? opts.onChange : null;
     this.format   = typeof opts.format === "function" ? opts.format : null;
 
@@ -515,8 +434,8 @@
     var c = P.box / 2;
 
     var ticks = "";
-    for (var i = 0; i < 11; i++){   /* eleven ticks, as on the reference */
-      var a = ARC_START + ARC_SWEEP * (i / 10);
+    for (var i = 0; i < P.ticks; i++){
+      var a = ARC_START + ARC_SWEEP * (i / (P.ticks - 1));
       var p0 = polar(c, P.tickIn, a), p1 = polar(c, P.tickOut, a);
       ticks += '<line x1="' + p0[0].toFixed(2) + '" y1="' + p0[1].toFixed(2) +
                '" x2="' + p1[0].toFixed(2) + '" y2="' + p1[1].toFixed(2) +
@@ -538,19 +457,24 @@
         ' shape-rendering="geometricPrecision">' +
         '<defs><filter id="' + gid + '" filterUnits="userSpaceOnUse" x="-10" y="-10" width="' +
           (P.box + 20) + '" height="' + (P.box + 20) + '">' +
-          '<feGaussianBlur stdDeviation="' + (P.arcW * 0.8).toFixed(2) + '"/>' +
+          '<feGaussianBlur stdDeviation="' + (P.arcW * 1.1).toFixed(2) + '"/>' +
         '</filter></defs>' +
         '<g class="sh-knob-ticks">' + ticks + '</g>' +
-        '<path class="sh-knob-arc-glow" stroke-width="' + (P.arcW * 2.6).toFixed(2) + '"/>' +
+        '<path class="sh-knob-arc-glow" filter="url(#' + gid + ')" stroke-width="' + (P.arcW * 3.4).toFixed(2) + '"/>' +
         '<path class="sh-knob-arc-bloom" filter="url(#' + gid + ')" stroke-width="' + (P.arcW * 1.6).toFixed(2) + '"/>' +
         '<path class="sh-knob-arc" stroke-width="' + P.arcW + '"/>' +
       '</svg>' +
       '<div class="sh-knob-halo"></div>' +
       '<div class="sh-knob-body">' +
-        '<i class="sh-knob-lay"></i>' +
         '<div class="sh-knob-rot"><i class="sh-knob-ind"></i></div>' +
       '</div>';
 
+    if (this.label && !(this.size === "lg" && !opts.readout)){
+      var lab = document.createElement("div");
+      lab.className = "sh-knob-label";
+      lab.textContent = this.label;
+      el.appendChild(lab);
+    }
     el.appendChild(dial);
 
     this.arc   = dial.querySelector(".sh-knob-arc");
@@ -572,12 +496,6 @@
       el.appendChild(scale);
       this.valueEl = null;
     } else {
-      if (this.label){
-        var lab = document.createElement("div");
-        lab.className = "sh-knob-label";
-        lab.textContent = this.label;
-        el.appendChild(lab);
-      }
       var val = this.valueEl = document.createElement("div");
       val.className = "sh-knob-value";
       el.appendChild(val);

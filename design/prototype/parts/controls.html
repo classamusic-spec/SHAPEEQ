@@ -1,86 +1,90 @@
 <style>
 /* ============================================================
-   SHAPE — band strip + bottom bar
+   SHAPE — band section + bottom section
+   Everything sits flush on the one brushed plate, divided by milled
+   grooves. Every row shares one centre line: all seven band knobs
+   line up, and the bottom pills sit on the I/O knobs' centre.
    ============================================================ */
-.sh-bandstrip, .sh-bottombar{ font-family:Inter, system-ui, sans-serif; -webkit-font-smoothing:antialiased; max-width:100%; }
-.sh-bandstrip *, .sh-bottombar *{ box-sizing:border-box; }
+.sh-band, .sh-bottom{ font-family:Inter, system-ui, sans-serif; -webkit-font-smoothing:antialiased; max-width:100%; }
+.sh-band *, .sh-bottom *{ box-sizing:border-box; }
 
-/* milled groove */
+/* milled grooves: a dark cut with a lit lower lip */
 .sh-divider{
-  flex:0 0 2px; width:2px; align-self:stretch; margin:6px 0;
+  flex:0 0 2px; width:2px; align-self:stretch;
   background:
-    linear-gradient(180deg, transparent, rgba(0,0,0,.20) 18%, rgba(0,0,0,.20) 82%, transparent) left / 1px 100% no-repeat,
-    linear-gradient(180deg, transparent, rgba(255,255,255,.75) 18%, rgba(255,255,255,.75) 82%, transparent) right / 1px 100% no-repeat;
+    linear-gradient(180deg, transparent, rgba(0,0,0,.18) 14%, rgba(0,0,0,.18) 86%, transparent) left / 1px 100% no-repeat,
+    linear-gradient(180deg, transparent, rgba(255,255,255,.8) 14%, rgba(255,255,255,.8) 86%, transparent) right / 1px 100% no-repeat;
 }
+.sh-hgroove{
+  height:2px; margin:0 -8px;
+  background:
+    linear-gradient(90deg, transparent, rgba(0,0,0,.16) 3%, rgba(0,0,0,.16) 97%, transparent) top / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent, rgba(255,255,255,.85) 3%, rgba(255,255,255,.85) 97%, transparent) bottom / 100% 1px no-repeat;
+}
+
+/* shared caption */
+.sh-cap{
+  display:block;
+  font-size:10.5px; font-weight:500; letter-spacing:.22em; text-transform:uppercase;
+  color:#2B3138; white-space:nowrap; line-height:1;
+}
+.sh-cap i{ font-style:normal; color:#6B737D; letter-spacing:.06em; }
 
 /* ============================================================
-   ROW 1 — the band strip, a panel set flush into the faceplate
+   BAND SECTION
    ============================================================ */
-.sh-bandstrip{
-  position:relative;
-  display:flex; align-items:stretch; justify-content:space-between; gap:0;
-  padding:16px 22px 14px 26px;
-  border-radius:14px;
-  background:linear-gradient(180deg, #DDE0E4 0%, #D5D9DE 100%);
-  box-shadow:
-    inset 0 1px 2px rgba(0,0,0,.14),
-    inset 0 0 0 1px rgba(0,0,0,.07),
-    inset 0 -1px 0 rgba(255,255,255,.55),
-    0 1px 0 rgba(255,255,255,.85);
+.sh-band{
+  display:flex; align-items:stretch; justify-content:space-between;
+  padding:14px 4px 16px;
 }
-.sh-bandstrip::after{
-  content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
-  background-image:var(--grain); background-size:700px 360px; mix-blend-mode:overlay; opacity:.22;
-}
-.sh-bandstrip > *{ position:relative; z-index:1; }
+.sh-group{ display:flex; flex-direction:column; min-width:0; }
+.sh-ghead{ height:30px; display:flex; align-items:center; gap:10px; padding:0 2px; }
+.sh-gbody{ height:128px; display:flex; align-items:center; }
+.sh-knobrow{ gap:6px; }
+.sh-knobmount{ flex:0 0 auto; }
 
-/* (a) band identity */
-.sh-bandid{ flex:0 0 184px; min-width:0; display:flex; flex-direction:column; gap:12px; padding-top:2px; }
-.sh-bandid-top{ display:flex; align-items:center; gap:9px; min-width:0; height:22px; }
+/* identity */
+.sh-group--id{ flex:0 0 196px; }
+.sh-group--id .sh-gbody{ flex-direction:column; align-items:stretch; justify-content:center; gap:10px; }
 .sh-dot{
   flex:0 0 auto; width:9px; height:9px; border-radius:50%;
   background:radial-gradient(circle at 35% 30%, #FFD9A8, #FF9E2C 55%, #E07A10);
   box-shadow:0 0 6px rgba(255,158,44,.95), 0 0 14px rgba(255,158,44,.45);
 }
 .sh-dot[data-off="1"]{ background:#9AA1A9; box-shadow:none; }
-.sh-bandlabel{ min-width:0; font-size:12px; font-weight:500; letter-spacing:.14em; text-transform:uppercase; color:#262B33; white-space:nowrap; }
+.sh-bandlabel{ font-size:12px; font-weight:500; letter-spacing:.16em; text-transform:uppercase; color:#23282E; white-space:nowrap; }
 .sh-chevrons{ margin-left:auto; display:flex; align-items:center; }
 .sh-chev{
   display:flex; align-items:center; justify-content:center;
-  width:26px; height:22px; color:#555D66; border-radius:5px;
+  width:26px; height:24px; color:#4E565F; border-radius:6px;
   transition:color .12s ease, background .12s ease;
 }
-.sh-chev + .sh-chev{ box-shadow:-1px 0 0 rgba(0,0,0,.14), -2px 0 0 rgba(255,255,255,.55); }
+.sh-chev + .sh-chev{ box-shadow:-1px 0 0 rgba(0,0,0,.14), -2px 0 0 rgba(255,255,255,.6); }
 .sh-chev:hover{ color:#1F242A; background:rgba(255,255,255,.45); }
 .sh-chev svg{ display:block; width:18px; height:18px; }
 
 .sh-select{
   appearance:none; -webkit-appearance:none;
   width:100%; height:38px; padding:0 34px 0 14px;
-  border-radius:9px; border:1px solid rgba(0,0,0,.13);
+  border-radius:10px; border:1px solid rgba(0,0,0,.14);
   font:500 13px/1 Inter, system-ui, sans-serif; color:#262B33; cursor:pointer; outline:none;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 1px 2px rgba(0,0,0,.08);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 1px 2px rgba(0,0,0,.10);
   background:
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23454C55' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat calc(100% - 14px) 50% / 12px 8px,
-    linear-gradient(180deg, #F2F4F6, #E1E4E8);
+    linear-gradient(180deg, #F4F5F7, #DEE2E6);
   transition:border-color .12s ease, box-shadow .12s ease;
 }
-.sh-select:hover{ border-color:rgba(0,0,0,.22); }
+.sh-select:hover{ border-color:rgba(0,0,0,.24); }
 .sh-select:focus-visible{ border-color:rgba(255,158,44,.8); box-shadow:inset 0 1px 0 rgba(255,255,255,.9), 0 0 0 3px rgba(255,158,44,.22); }
 
-/* (b) + (d) knob groups */
-.sh-knobgroup{ flex:0 0 auto; display:flex; align-items:flex-start; gap:12px; padding-top:4px; }
-.sh-dyngroup{ flex:0 1 auto; min-width:0; display:flex; flex-direction:column; align-items:flex-start; gap:8px; }
-.sh-dynknobs{ display:flex; align-items:flex-start; gap:10px; }
-.sh-knobmount{ flex:0 0 auto; }
-
-/* (e) buttons */
-.sh-btncol{ flex:0 0 66px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; }
+/* buttons */
+.sh-group--btn{ flex:0 0 68px; }
+.sh-group--btn .sh-gbody{ flex-direction:column; justify-content:center; gap:9px; }
 .sh-minibtn{
-  width:62px; height:32px; border-radius:9px;
-  border:1px solid rgba(0,0,0,.14);
-  background:linear-gradient(180deg,#F4F5F7,#DEE2E6);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 1px 2px rgba(0,0,0,.12);
+  width:64px; height:32px; border-radius:999px;
+  border:1px solid rgba(0,0,0,.15);
+  background:linear-gradient(180deg,#F5F6F8,#DADEE2);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 1px 2px rgba(0,0,0,.14);
   font:500 10px/1 Inter, system-ui, sans-serif; letter-spacing:.14em; text-transform:uppercase;
   color:#4A525C; cursor:pointer; display:flex; align-items:center; justify-content:center;
   transition:color .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
@@ -97,7 +101,7 @@
   width:40px; height:40px; border-radius:50%;
   border:1px solid rgba(0,0,0,.16);
   background:radial-gradient(circle at 40% 30%, #FFFFFF, #E4E7EA 55%, #CDD2D7);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 1px 3px rgba(0,0,0,.2);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 2px 4px rgba(0,0,0,.2);
   color:#8A929B; cursor:pointer; display:flex; align-items:center; justify-content:center;
   transition:color .12s ease, box-shadow .12s ease;
 }
@@ -106,45 +110,47 @@
 .sh-powerbtn:not(.is-on){ color:#B0B6BD; box-shadow: inset 0 2px 4px rgba(0,0,0,.18); }
 
 /* ============================================================
-   ROW 2 — the bottom bar, milled straight into the chassis
+   BOTTOM SECTION
    ============================================================ */
-.sh-bottombar{ display:flex; align-items:stretch; padding:10px 6px 10px; }
-.sh-cap{
-  display:block; margin-bottom:10px;
-  font-size:11px; font-weight:500; letter-spacing:.24em; text-transform:uppercase;
-  color:#2E343C; white-space:nowrap; text-align:center;
-}
-.sh-cap i{ font-style:normal; color:#6B737D; letter-spacing:.06em; }
-.sh-iocell{ flex:0 0 150px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
-.sh-segcell{ flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 10px; }
-.sh-segcell .sh-cap{ margin-bottom:12px; }
+.sh-bottom{ display:flex; align-items:stretch; justify-content:space-between; padding:14px 4px 12px; }
+.sh-io{ flex:0 0 150px; display:flex; flex-direction:column; align-items:center; }
+.sh-io > .sh-cap{ height:16px; display:flex; align-items:center; margin-right:-.22em; }
+.sh-sel{ flex:1 1 0; min-width:0; display:flex; justify-content:center; padding-top:16px; }
+/* the pill row sits on the I/O knobs' centre line; its caption rides above */
+.sh-selbody{ height:126px; display:flex; align-items:center; }
+.sh-selgroup{ position:relative; }
+.sh-selgroup > .sh-cap{ position:absolute; left:2px; bottom:calc(100% + 11px); }
 
 /* ============================================================
    RESPONSIVE
    ============================================================ */
 @media (max-width:1180px){
-  .sh-bandstrip{ flex-wrap:wrap; row-gap:14px; column-gap:16px; justify-content:flex-start; }
-  .sh-bandstrip > .sh-divider{ display:none; }
-  .sh-btncol{ flex-direction:row; flex-basis:auto; margin-left:auto; }
+  .sh-band{ flex-wrap:wrap; row-gap:16px; justify-content:space-around; }
+  .sh-band > .sh-divider{ display:none; }
+  .sh-group--id{ flex-basis:100%; }
+  .sh-group--id .sh-gbody{ height:auto; flex-direction:row; align-items:center; }
+  .sh-group--id .sh-select{ max-width:220px; }
+  .sh-group--btn .sh-gbody{ flex-direction:row; height:auto; padding-top:10px; }
+  .sh-group--btn{ flex-basis:100%; }
 }
 @media (max-width:900px){
-  .sh-bottombar{ flex-wrap:wrap; row-gap:18px; }
-  .sh-bottombar > .sh-divider{ display:none; }
-  .sh-iocell--in{ order:1; flex:1 1 50%; }
-  .sh-iocell--out{ order:2; flex:1 1 50%; }
-  .sh-segcell{ order:3; flex:1 1 100%; }
+  .sh-bottom{ flex-wrap:wrap; row-gap:22px; }
+  .sh-bottom > .sh-divider{ display:none; }
+  .sh-io--in{ order:1; flex:1 1 50%; }
+  .sh-io--out{ order:2; flex:1 1 50%; }
+  .sh-sel{ order:3; flex:1 1 100%; padding-top:26px; }
+  .sh-selbody{ height:auto; }
 }
 @media (max-width:640px){
-  .sh-bandstrip{ padding:14px; }
-  .sh-bandid{ flex:1 1 100%; }
-  .sh-knobgroup, .sh-dynknobs{ flex-wrap:wrap; gap:6px; }
+  .sh-knobrow{ flex-wrap:wrap; justify-content:center; }
+  .sh-gbody{ height:auto; }
 }
 </style>
 
-<div class="sh-bandstrip">
+<div class="sh-band">
 
-  <div class="sh-bandid">
-    <div class="sh-bandid-top">
+  <div class="sh-group sh-group--id">
+    <div class="sh-ghead">
       <span class="sh-dot" data-band-dot></span>
       <span class="sh-bandlabel" data-band-number>BAND 3</span>
       <span class="sh-chevrons">
@@ -156,72 +162,84 @@
         </button>
       </span>
     </div>
-    <div class="sh-shapebtns"></div>
-    <select class="sh-select" aria-label="Filter type"></select>
-  </div>
-
-  <div class="sh-knobgroup">
-    <div class="sh-knobmount" data-knob="frequency" data-size="xl"></div>
-    <div class="sh-knobmount" data-knob="gain" data-size="xl"></div>
-    <div class="sh-knobmount" data-knob="q" data-size="xl"></div>
-  </div>
-
-  <div class="sh-divider" aria-hidden="true"></div>
-
-  <div class="sh-dyngroup">
-    <div class="sh-pillmount" data-pill="dynamic"></div>
-    <div class="sh-dynknobs">
-      <div class="sh-knobmount" data-knob="threshold" data-size="sm"></div>
-      <div class="sh-knobmount" data-knob="range" data-size="sm"></div>
-      <div class="sh-knobmount" data-knob="attack" data-size="sm"></div>
-      <div class="sh-knobmount" data-knob="release" data-size="sm"></div>
+    <div class="sh-gbody">
+      <div class="sh-shapebtns"></div>
+      <select class="sh-select" aria-label="Filter type"></select>
     </div>
   </div>
 
   <div class="sh-divider" aria-hidden="true"></div>
 
-  <div class="sh-btncol">
-    <button class="sh-minibtn" type="button" data-act="solo" aria-pressed="false" title="Solo the selected band (S)">SOLO</button>
-    <button class="sh-powerbtn is-on" type="button" data-act="power" aria-label="Band on/off" aria-pressed="true" title="Band on / off">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
-        <path d="M7.6 6.6a7 7 0 1 0 8.8 0"/><path d="M12 3v8"/>
-      </svg>
-    </button>
-    <button class="sh-minibtn" type="button" data-act="sc" aria-pressed="false" title="Key this band's detector from the sidechain input">SC</button>
+  <div class="sh-group">
+    <div class="sh-ghead"><span class="sh-cap">Filter</span></div>
+    <div class="sh-gbody sh-knobrow">
+      <div class="sh-knobmount" data-knob="frequency"></div>
+      <div class="sh-knobmount" data-knob="gain"></div>
+      <div class="sh-knobmount" data-knob="q"></div>
+    </div>
+  </div>
+
+  <div class="sh-divider" aria-hidden="true"></div>
+
+  <div class="sh-group">
+    <div class="sh-ghead"><div class="sh-pillmount" data-pill="dynamic"></div></div>
+    <div class="sh-gbody sh-knobrow">
+      <div class="sh-knobmount" data-knob="threshold"></div>
+      <div class="sh-knobmount" data-knob="range"></div>
+      <div class="sh-knobmount" data-knob="attack"></div>
+      <div class="sh-knobmount" data-knob="release"></div>
+    </div>
+  </div>
+
+  <div class="sh-divider" aria-hidden="true"></div>
+
+  <div class="sh-group sh-group--btn">
+    <div class="sh-ghead"></div>
+    <div class="sh-gbody">
+      <button class="sh-minibtn" type="button" data-act="solo" aria-pressed="false" title="Solo the selected band (S)">Solo</button>
+      <button class="sh-powerbtn is-on" type="button" data-act="power" aria-label="Band on/off" aria-pressed="true" title="Band on / off">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <path d="M7.6 6.6a7 7 0 1 0 8.8 0"/><path d="M12 3v8"/>
+        </svg>
+      </button>
+      <button class="sh-minibtn" type="button" data-act="sc" aria-pressed="false" title="Key this band's detector from the sidechain input">SC</button>
+    </div>
   </div>
 
 </div>
 
-<div class="sh-bottombar">
-  <div class="sh-iocell sh-iocell--in">
+<div class="sh-hgroove" aria-hidden="true"></div>
+
+<div class="sh-bottom">
+  <div class="sh-io sh-io--in">
     <span class="sh-cap">Input</span>
     <div class="sh-knobmount" data-knob="input" data-size="lg"></div>
   </div>
 
   <div class="sh-divider" aria-hidden="true"></div>
 
-  <div class="sh-segcell">
+  <div class="sh-sel"><div class="sh-selbody"><div class="sh-selgroup">
     <span class="sh-cap">Phase <i data-phase-note>·</i></span>
     <div class="sh-segmount" data-seg="phase"></div>
-  </div>
+  </div></div></div>
 
   <div class="sh-divider" aria-hidden="true"></div>
 
-  <div class="sh-segcell">
+  <div class="sh-sel"><div class="sh-selbody"><div class="sh-selgroup">
     <span class="sh-cap">Scale</span>
     <div class="sh-segmount" data-seg="scale"></div>
-  </div>
+  </div></div></div>
 
   <div class="sh-divider" aria-hidden="true"></div>
 
-  <div class="sh-segcell">
+  <div class="sh-sel"><div class="sh-selbody"><div class="sh-selgroup">
     <span class="sh-cap">Mode <i>·</i></span>
     <div class="sh-segmount" data-seg="mode"></div>
-  </div>
+  </div></div></div>
 
   <div class="sh-divider" aria-hidden="true"></div>
 
-  <div class="sh-iocell sh-iocell--out">
+  <div class="sh-io sh-io--out">
     <span class="sh-cap">Output</span>
     <div class="sh-knobmount" data-knob="output" data-size="lg"></div>
   </div>

@@ -256,3 +256,26 @@ No audio is processed; the spectrum is synthesised. MODE (Clean / Analog /
 Precision) and SC are stored and displayed but inert. `ShapeTheme.h` has
 still never been compiled. All four core quality gates remain
 **UNVERIFIED**, so the spectral features stay locked.
+
+---
+
+## 2026-09-22 · Layout clean-up and family knobs
+
+Reference: `design/reference/HEAT_FAMILY_REFERENCE.webp`. The display was
+left as it was; everything around it was reworked.
+
+- Knobs rebuilt to match the family: flush on the plate (the recessed
+  collar is gone), a flat lathe-turned cap on a cylinder wall, a rim glow
+  for the value, a long indicator, label above and readout below. Two
+  sizes only, so every band knob shares one centre line.
+- The band strip's inset panel is gone; the plate is divided by milled
+  grooves. The DYNAMIC toggle moved into its group's header line, so it no
+  longer pushes the dynamic knobs below the filter knobs.
+- The bottom pills now sit exactly on the I/O knobs' centre line.
+- Header follows the family: wordmark, rule, two-line descriptor, groove.
+- The first knob render showed radial spokes on the caps — 2px concentric
+  rings aliasing against the pixel grid. Replaced with a noise grain and
+  checked at 3x.
+
+Verified: EQ audit 1,000/1,000; the 24 headless interaction checks all
+pass after the DOM restructure, no runtime errors.

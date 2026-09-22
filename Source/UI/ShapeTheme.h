@@ -104,18 +104,19 @@ namespace shape::theme
         inline constexpr float pillRadius    = 999.0f;
         inline constexpr float hairline      =  1.0f;
 
-        // --- the knob: a machined cap in a recessed collar; the LED value
-        //     arc runs in the collar, eleven ticks sit beyond it ---
-        inline constexpr float knobBodyBand   = 76.0f;   // FREQUENCY / GAIN / Q
-        inline constexpr float knobBodyDyn    = 58.0f;   // THRESHOLD ... RELEASE
-        inline constexpr float knobBodyIO     = 76.0f;   // INPUT / OUTPUT
-        inline constexpr float knobCollar     = 17.0f;   // collar diameter beyond the cap
-        inline constexpr float knobArcRadius  = 42.8f;   // band-size knob
-        inline constexpr float knobArcStroke  =  3.0f;
-        inline constexpr float knobTickInner  = 47.5f;
-        inline constexpr float knobTickOuter  = 52.0f;
-        inline constexpr int   knobTickCount  = 11;
-        inline constexpr float knobIndicator  = 30.0f;   // length: centre to near the rim
+        // --- the knob, after the family's HEAT reference: a flat lathe-turned
+        //     cap on a cylinder wall, sitting flush on the plate (no collar),
+        //     the value shown as a rim glow spilling from its edge ---
+        inline constexpr float knobBody       = 62.0f;   // every band knob, one size
+        inline constexpr float knobSkirt      = 70.0f;   // cylinder wall under the cap
+        inline constexpr float knobBodyIO     = 84.0f;   // INPUT / OUTPUT
+        inline constexpr float knobSkirtIO    = 94.0f;
+        inline constexpr float knobRimGlowGap =  1.4f;   // glow radius beyond the skirt
+        inline constexpr float knobArcStroke  =  2.2f;   // blurred x1.1 for the bloom
+        inline constexpr float knobTickInner  = 41.0f;
+        inline constexpr float knobTickOuter  = 44.6f;
+        inline constexpr int   knobTickCount  = 11;      // band knobs; none on I/O
+        inline constexpr float knobIndicator  = 24.0f;   // from the rim inward
         inline constexpr float knobArcStart   = 135.0f;  // degrees
         inline constexpr float knobArcEnd     = 405.0f;
         inline constexpr float knobDragTravel = 190.0f;  // px for full range
@@ -135,6 +136,13 @@ namespace shape::theme
         inline constexpr float wellPadRight  = 54.0f;
         inline constexpr float wellPadTop    = 66.0f;
         inline constexpr float wellPadBottom = 34.0f;
+
+        // --- layout: one plate, divided by milled grooves; every control
+        //     row shares a single centre line ---
+        inline constexpr float headerHeight   = 96.0f;
+        inline constexpr float groupHeadHeight = 30.0f;  // BAND 3 / FILTER / DYNAMIC line
+        inline constexpr float knobRowHeight  = 128.0f;
+        inline constexpr float knobPitch      = 118.0f;  // centre to centre, every band knob
 
         inline constexpr float curveStroke = 2.2f;
 
