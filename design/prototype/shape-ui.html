@@ -572,7 +572,13 @@ body{
   margin:calc(var(--sh-body) / -2) 0 0 calc(var(--sh-body) / -2);
   border-radius:50%;
   isolation:isolate;
-  background:radial-gradient(circle at 38% 30%,
+  /* top layer: the concentric chamfer the lathe leaves; under it, the dome */
+  background:
+    radial-gradient(circle closest-side,
+      rgba(0,0,0,0) 76%,
+      rgba(54,62,72,.20) 92%,
+      rgba(255,255,255,.34) 100%),
+    radial-gradient(circle at 38% 30%,
       #FCFCFD 0%,
       #E4E7EA 30%,
       #BFC5CB 62%,
