@@ -1,408 +1,331 @@
 <style>
 :root{
-  --chassis-hi:#F2F4F6; --chassis:#D4D8DD; --chassis-lo:#AEB4BB; --chassis-edge:#8A9098;
+  --chassis-hi:#F4F5F7; --chassis:#D3D7DC; --chassis-lo:#AEB4BB; --chassis-edge:#7F868E;
   --panel-hi:#E2E5E9;  --panel:#D0D5DA;   --panel-lo:#BCC2C9;
   --well-bg:#0C0E12;   --well-bg2:#171B21; --well-line:#262B33; --well-edge:#05070A;
   --ink:#262B33; --ink2:#5B636D; --ink3:#878F99;
   --on-dark:#C8CFD8; --on-dark2:#7B838E;
   --amber:#FF9E2C; --cyan:#45C2F0; --violet:#9B7BF0; --green:#6FC98A;
+  --grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='700' height='360'><filter id='b'><feTurbulence type='fractalNoise' baseFrequency='0.0035 0.95' numOctaves='2' seed='7'/><feColorMatrix type='saturate' values='0'/></filter><rect width='700' height='360' filter='url(%23b)'/></svg>");
 }
 
 /* ============ chassis shell ============ */
-.sh-chassis,
-.sh-chassis *,
-.sh-chassis *::before,
-.sh-chassis *::after{ box-sizing:border-box; }
+.sh-chassis, .sh-chassis *, .sh-chassis *::before, .sh-chassis *::after{ box-sizing:border-box; }
 
 .sh-chassis{
   position:relative;
   isolation:isolate;
-  display:flex;
-  flex-direction:column;
-  width:100%;
-  min-width:0;
-  border:1px solid var(--chassis-edge);
-  border-radius:14px;
+  display:flex; flex-direction:column;
+  width:100%; min-width:0;
+  border-radius:18px;
   font-family:Inter,system-ui,sans-serif;
   font-variant-numeric:tabular-nums;
   color:var(--ink);
   -webkit-font-smoothing:antialiased;
   background:
-    repeating-linear-gradient(0deg,
-      rgba(255,255,255,.35) 0px, rgba(255,255,255,.35) 1px,
-      rgba(255,255,255,0) 1px, rgba(255,255,255,0) 3px),
-    repeating-linear-gradient(0deg,
-      rgba(0,0,0,.045) 0px, rgba(0,0,0,.045) 1px,
-      rgba(0,0,0,0) 1px, rgba(0,0,0,0) 5px),
-    linear-gradient(180deg,
-      var(--chassis-hi) 0%,
-      var(--chassis) 48%,
-      var(--chassis-lo) 100%);
+    linear-gradient(180deg, var(--chassis-hi) 0%, #DDE0E4 18%, var(--chassis) 55%, #C3C8CE 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.9),
-    inset 0 -1px 0 rgba(0,0,0,.18),
-    inset 1px 0 0 rgba(255,255,255,.34),
-    inset -1px 0 0 rgba(0,0,0,.09),
-    0 1px 0 rgba(255,255,255,.5),
-    0 2px 5px rgba(0,0,0,.16),
-    0 22px 46px -14px rgba(0,0,0,.42);
+    0 0 0 1px var(--chassis-edge),
+    inset 0 2px 0 rgba(255,255,255,.95),
+    inset 0 -2px 0 rgba(0,0,0,.14),
+    inset 2px 0 0 rgba(255,255,255,.45),
+    inset -2px 0 0 rgba(0,0,0,.08),
+    inset 0 0 0 6px rgba(255,255,255,.10),
+    0 30px 60px -18px rgba(0,0,0,.55),
+    0 4px 10px rgba(0,0,0,.18);
 }
-
-/* soft studio-light sweep across the brushed face */
+/* brushed grain, running horizontally as the lathe left it */
+.sh-chassis::after{
+  content:""; position:absolute; inset:0; z-index:0; pointer-events:none;
+  border-radius:inherit;
+  background-image:var(--grain);
+  background-size:700px 360px;
+  mix-blend-mode:overlay;
+  opacity:.30;
+}
+/* soft studio light across the face */
 .sh-chassis::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  z-index:0;
-  pointer-events:none;
+  content:""; position:absolute; inset:0; z-index:0; pointer-events:none;
   border-radius:inherit;
   background:
-    radial-gradient(130% 58% at 50% -14%, rgba(255,255,255,.55), rgba(255,255,255,0) 62%),
-    linear-gradient(100deg,
-      rgba(255,255,255,0) 18%,
-      rgba(255,255,255,.26) 41%,
-      rgba(255,255,255,0) 61%);
+    radial-gradient(120% 55% at 30% -12%, rgba(255,255,255,.55), rgba(255,255,255,0) 60%),
+    linear-gradient(105deg, rgba(255,255,255,0) 20%, rgba(255,255,255,.20) 42%, rgba(255,255,255,0) 62%);
 }
 
-.sh-chassis button{
-  margin:0;
-  padding:0;
-  border:0;
-  background:none;
-  font:inherit;
-  color:inherit;
-  line-height:1;
-  cursor:pointer;
-  -webkit-appearance:none;
-  appearance:none;
+/* a zero-specificity reset: components' own rules always win over it */
+:where(.sh-chassis) button{
+  margin:0; padding:0; border:0; background:none;
+  font:inherit; color:inherit; line-height:1; cursor:pointer;
+  -webkit-appearance:none; appearance:none;
 }
-.sh-chassis :focus-visible{
-  outline:2px solid var(--cyan);
-  outline-offset:3px;
-  border-radius:6px;
-}
+.sh-chassis :focus-visible{ outline:2px solid var(--cyan); outline-offset:3px; border-radius:6px; }
 
 /* ============ header ============ */
 .sh-header{
-  position:relative;
-  z-index:1;
-  display:flex;
-  flex-wrap:nowrap;
-  align-items:center;
-  gap:20px;
-  height:92px;
-  padding:0 26px;
+  position:relative; z-index:3;
+  display:flex; align-items:center; gap:20px;
+  height:112px; padding:4px 34px 0;
 }
-
-/* --- left: wordmark --- */
-.sh-brand{
-  flex:1 1 0;
-  min-width:min-content;
-  display:flex;
-  flex-direction:column;
-  gap:9px;
-}
-.sh-wordmark{
-  font-size:34px;
-  font-weight:200;
-  line-height:1;
-  letter-spacing:.42em;
-  margin-right:-.42em;
-  color:var(--ink);
-  white-space:nowrap;
-}
+.sh-brand{ flex:1 1 0; min-width:min-content; display:flex; flex-direction:column; gap:14px; }
+.sh-wordmark{ display:block; width:258px; height:auto; overflow:visible; }
+.sh-wordmark path{ fill:none; stroke:var(--ink); stroke-width:2.3; stroke-linejoin:miter; stroke-linecap:butt; }
 .sh-subword{
-  font-size:9.5px;
-  font-weight:500;
-  line-height:1.2;
-  letter-spacing:.28em;
-  margin-right:-.28em;
-  text-transform:uppercase;
-  color:var(--ink2);
+  font-size:10px; font-weight:500; line-height:1;
+  letter-spacing:.46em; margin-right:-.46em;
+  text-transform:uppercase; color:#4A525C; white-space:nowrap;
 }
 
-/* --- centre: preset capsule --- */
+/* --- preset capsule, set into the faceplate behind a machined bezel --- */
 .sh-preset{
   flex:0 1 auto;
-  display:flex;
-  align-items:center;
-  gap:2px;
-  height:56px;
-  min-width:480px;
-  max-width:100%;
-  padding:0 6px;
+  display:flex; align-items:stretch;
+  height:60px; width:452px; max-width:100%;
   border-radius:999px;
-  background:linear-gradient(180deg,#1A1E24,#0E1116);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.08),
-    inset 0 3px 9px rgba(0,0,0,.62),
-    inset 0 -1px 0 rgba(255,255,255,.04),
-    0 1px 0 rgba(255,255,255,.72),
-    0 8px 16px -8px rgba(0,0,0,.5);
+  padding:3px;
+  background:linear-gradient(180deg,#9BA2AA 0%,#D8DCE0 45%,#F4F6F7 100%);
+  box-shadow: 0 1px 0 rgba(255,255,255,.9), inset 0 1px 1px rgba(0,0,0,.25);
+}
+.sh-preset-face{
+  flex:1 1 auto; display:flex; align-items:stretch; min-width:0;
+  border-radius:999px;
+  background:linear-gradient(180deg,#22262D 0%,#14171C 55%,#0E1014 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), inset 0 -1px 0 rgba(0,0,0,.6), inset 0 4px 10px rgba(0,0,0,.45);
+  overflow:hidden;
 }
 .sh-preset-nav{
-  flex:0 0 auto;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  width:44px;
-  height:44px;
-  border-radius:999px;
-  color:var(--on-dark2);
-  transition:color .15s ease, background-color .15s ease;
+  flex:0 0 60px;
+  display:flex; align-items:center; justify-content:center;
+  color:#C3C9D0;
+  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,0));
+  transition:color .15s ease, background .15s ease;
 }
-.sh-preset-nav:hover{
-  color:var(--on-dark);
-  background:rgba(255,255,255,.05);
-}
-.sh-preset-nav svg{ width:28px; height:28px; display:block; }
-
-.sh-preset-core{
-  flex:1 1 auto;
-  min-width:0;
-  display:flex;
-  align-items:center;
-  gap:14px;
-  padding:0 4px;
-}
-.sh-preset-pad{ flex:0 0 16px; }
-.sh-preset-text{
-  flex:1 1 auto;
-  min-width:0;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:5px;
-  text-align:center;
-}
+.sh-preset-nav:first-child{ box-shadow: inset -1px 0 0 rgba(0,0,0,.55), 1px 0 0 rgba(255,255,255,.06); }
+.sh-preset-nav:last-child{ box-shadow: inset 1px 0 0 rgba(0,0,0,.55), -1px 0 0 rgba(255,255,255,.06); }
+.sh-preset-nav:hover{ color:#FFFFFF; background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.02)); }
+.sh-preset-nav svg{ width:22px; height:22px; display:block; }
+.sh-preset-core{ flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:10px; padding:0 14px 0 30px; }
+.sh-preset-text{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; align-items:center; gap:7px; text-align:center; }
 .sh-preset-name{
-  max-width:100%;
-  font-size:17px;
-  font-weight:500;
-  line-height:1;
-  color:var(--cyan);
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
+  max-width:100%; font-size:18px; font-weight:400; line-height:1; letter-spacing:.01em;
+  color:#6FCBF4; text-shadow:0 0 12px rgba(69,194,240,.35);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .sh-preset-tags{
-  max-width:100%;
-  font-size:8.5px;
-  font-weight:500;
-  line-height:1;
-  letter-spacing:.22em;
-  margin-right:-.22em;
-  text-transform:uppercase;
-  color:var(--on-dark2);
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
+  max-width:100%; font-size:8.5px; font-weight:500; line-height:1;
+  letter-spacing:.28em; margin-right:-.28em; text-transform:uppercase; color:#838C97;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
-.sh-fav{
-  flex:0 0 auto;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  width:16px;
-  height:16px;
-  color:var(--on-dark2);
-  transition:color .15s ease;
-}
-.sh-fav:hover{ color:var(--on-dark); }
-.sh-fav svg{ width:16px; height:16px; display:block; }
+.sh-fav{ flex:0 0 auto; display:flex; align-items:center; justify-content:center; width:24px; height:24px; color:#B8BFC7; transition:color .15s ease; }
+.sh-fav:hover{ color:#FFFFFF; }
+.sh-fav svg{ width:18px; height:18px; display:block; }
+.sh-fav svg path{ fill:none; transition:fill .15s ease; }
+.sh-fav[aria-pressed="true"]{ color:#FF7A8A; }
+.sh-fav[aria-pressed="true"] svg path{ fill:currentColor; }
 
 /* --- right: tools --- */
 .sh-tools{
-  flex:1 1 0;
-  min-width:min-content;
-  display:flex;
-  align-items:center;
-  justify-content:flex-end;
-  gap:22px;
+  position:relative;
+  flex:1 1 0; min-width:min-content;
+  display:flex; align-items:center; justify-content:flex-end; gap:0;
 }
 .sh-gear{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  width:20px;
-  height:20px;
-  color:var(--ink2);
-  transition:color .15s ease;
+  width:36px; height:36px; display:flex; align-items:center; justify-content:center;
+  color:#2E343C; border-radius:10px;
+  transition:color .15s ease, background .15s ease, transform .3s ease;
 }
-.sh-gear:hover{ color:var(--ink); }
-.sh-gear svg{ width:20px; height:20px; display:block; }
+.sh-gear:hover{ background:rgba(255,255,255,.35); }
+.sh-gear[aria-expanded="true"]{ background:rgba(0,0,0,.06); }
+.sh-gear[aria-expanded="true"] svg{ transform:rotate(30deg); }
+.sh-gear svg{ width:24px; height:24px; display:block; transition:transform .3s ease; }
+.sh-vrule{ width:1px; height:38px; margin:0 22px 0 18px; background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.22),rgba(0,0,0,0)); box-shadow:1px 0 0 rgba(255,255,255,.6); }
 
-.sh-ab{
-  display:flex;
-  align-items:center;
-  gap:14px;
-}
+.sh-ab{ display:flex; align-items:center; gap:24px; margin-right:46px; }
 .sh-ab-slot{
-  position:relative;
-  font-size:15px;
-  font-weight:500;
-  line-height:1;
-  color:var(--ink3);
-  padding-bottom:2px;
-  transition:color .15s ease;
+  position:relative; font-size:17px; font-weight:400; line-height:1;
+  color:#9AA1A9; padding:4px 3px 6px; transition:color .15s ease;
 }
 .sh-ab-slot:hover{ color:var(--ink2); }
-.sh-ab-on,.sh-ab-slot.is-on{ color:var(--ink); }
-.sh-ab-on:hover,.sh-ab-slot.is-on:hover{ color:var(--ink); }
-.sh-ab-on::after,.sh-ab-slot.is-on::after{
-  content:"";
-  position:absolute;
-  left:-1px;
-  right:-1px;
-  bottom:-5px;
-  height:2px;
-  border-radius:1px;
-  background:var(--amber);
-  box-shadow:0 0 6px rgba(255,158,44,.45);
+.sh-ab-slot.is-on{ color:#1F242A; }
+.sh-ab-slot.is-on::after{
+  content:""; position:absolute; left:-2px; right:-2px; bottom:-2px; height:2px; border-radius:1px;
+  background:#2A2F36;
+}
+.sh-vendor{
+  font-size:10.5px; font-weight:500; line-height:1;
+  letter-spacing:.22em; margin-right:-.22em;
+  text-transform:uppercase; color:#3E454E;
+  padding-bottom:11px; border-bottom:1px solid rgba(0,0,0,.22);
+  box-shadow:0 1px 0 rgba(255,255,255,.6);
+  white-space:nowrap;
 }
 
-.sh-vendor{
-  font-size:9px;
-  font-weight:500;
-  line-height:1;
-  letter-spacing:.2em;
-  margin-right:-.2em;
-  text-transform:uppercase;
-  color:var(--ink3);
-  padding-bottom:7px;
-  border-bottom:1px solid rgba(0,0,0,.15);
-  white-space:nowrap;
+/* --- settings popover --- */
+.sh-settings{
+  position:absolute; top:calc(100% + 12px); right:210px; z-index:20;
+  width:318px;
+  border-radius:16px;
+  padding:18px 18px 16px;
+  background:linear-gradient(180deg,rgba(30,34,41,.98),rgba(16,19,24,.98));
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.08),
+    0 24px 48px -12px rgba(0,0,0,.6), 0 8px 18px rgba(0,0,0,.3);
+  color:#C8CFD8;
+  display:flex; flex-direction:column; gap:14px;
+  transform-origin:top right;
+  animation:sh-pop 160ms cubic-bezier(.2,.8,.2,1);
+}
+@keyframes sh-pop{ from{ opacity:0; transform:translateY(-4px) scale(.98); } to{ opacity:1; transform:none; } }
+.sh-settings::before{
+  content:""; position:absolute; top:-6px; right:26px; width:12px; height:12px; transform:rotate(45deg);
+  background:#1E2229; box-shadow:-1px -1px 0 rgba(0,0,0,.5);
+}
+.sh-set-title{ font-size:10px; font-weight:600; letter-spacing:.24em; text-transform:uppercase; color:#FFFFFF; display:flex; justify-content:space-between; align-items:center; }
+.sh-set-title span{ color:#6B747F; font-weight:500; letter-spacing:.1em; }
+.sh-set-row{ display:flex; flex-direction:column; gap:7px; }
+.sh-set-lbl{ font-size:9px; font-weight:600; letter-spacing:.2em; text-transform:uppercase; color:#7F8893; display:flex; justify-content:space-between; }
+.sh-set-lbl b{ font-weight:500; letter-spacing:.04em; text-transform:none; color:#FFB25C; }
+.sh-set-seg{ display:flex; gap:0; border-radius:8px; box-shadow:inset 0 0 0 1px rgba(255,255,255,.09); background:rgba(255,255,255,.03); }
+.sh-set-seg button{
+  flex:1 1 0; height:28px; font-size:10.5px; font-weight:500; letter-spacing:.04em;
+  color:#AAB2BC; border-radius:8px; position:relative;
+  transition:color .12s ease, background .12s ease, box-shadow .12s ease;
+}
+.sh-set-seg button + button::before{ content:""; position:absolute; left:0; top:7px; bottom:7px; width:1px; background:rgba(255,255,255,.08); }
+.sh-set-seg button:hover{ color:#FFFFFF; }
+.sh-set-seg button[aria-pressed="true"]{
+  color:#FFB25C; background:rgba(255,158,44,.12);
+  box-shadow:inset 0 0 0 1px rgba(255,158,44,.8), 0 0 10px rgba(255,140,30,.3);
+}
+.sh-set-seg button[aria-pressed="true"]::before,
+.sh-set-seg button[aria-pressed="true"] + button::before{ opacity:0; }
+.sh-set-keys{
+  display:grid; grid-template-columns:auto 1fr; gap:6px 12px;
+  padding-top:12px; border-top:1px solid rgba(255,255,255,.07);
+  font-size:10.5px; color:#8C95A0;
+}
+.sh-set-keys kbd{
+  font:500 9.5px/1 Inter,system-ui,sans-serif; color:#D6DCE3;
+  padding:3px 6px; border-radius:4px; background:rgba(255,255,255,.07);
+  box-shadow:inset 0 -1px 0 rgba(0,0,0,.5); justify-self:start; white-space:nowrap;
 }
 
 /* ============ body mount ============ */
-.sh-chassis > #mount-body{
-  position:relative;
-  z-index:1;
-  flex:1 1 auto;
-  min-width:0;
-  padding:0 26px 20px;
-}
+.sh-chassis > #mount-body{ position:relative; z-index:1; flex:1 1 auto; min-width:0; padding:0 30px 4px; }
 
 /* ============ footer ============ */
 .sh-footer{
-  position:relative;
-  z-index:1;
-  display:flex;
-  flex-wrap:wrap;
-  align-items:center;
-  justify-content:center;
-  gap:16px;
-  height:44px;
-  padding:0 20px;
-  border-top:1px solid rgba(255,255,255,.5);
-  border-radius:0 0 13px 13px;
-  background:
-    repeating-linear-gradient(0deg,
-      rgba(255,255,255,.22) 0px, rgba(255,255,255,.22) 1px,
-      rgba(255,255,255,0) 1px, rgba(255,255,255,0) 3px),
-    linear-gradient(180deg, var(--panel-lo), var(--chassis-lo));
-  box-shadow:inset 0 -1px 0 rgba(0,0,0,.1);
+  position:relative; z-index:1;
+  display:flex; align-items:center; justify-content:center; gap:30px;
+  height:52px; padding:0 20px;
+  border-radius:0 0 17px 17px;
+  background:linear-gradient(180deg,#C4C9CF 0%,#B6BCC3 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.65), inset 0 2px 0 rgba(0,0,0,.06), inset 0 -2px 0 rgba(0,0,0,.08);
 }
-.sh-footer-line,
-.sh-footer-slash{
-  font-size:10px;
-  font-weight:500;
-  line-height:1;
-  letter-spacing:.3em;
-  text-transform:uppercase;
-  white-space:nowrap;
+.sh-footer::after{
+  content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+  background-image:var(--grain); background-size:700px 360px; mix-blend-mode:overlay; opacity:.35;
 }
-.sh-footer-line{ color:var(--ink2); }
-.sh-footer-slash{ color:var(--ink3); }
+.sh-footer-line, .sh-footer-slash{ font-size:10px; font-weight:500; line-height:1; letter-spacing:.42em; text-transform:uppercase; white-space:nowrap; }
+.sh-footer-line{ color:#4E565F; }
+.sh-footer-slash{ color:#7C848D; letter-spacing:0; }
 
 /* ============ responsive ============ */
-@media (max-width:1060px){
-  .sh-preset{ min-width:340px; }
+@media (max-width:1180px){
+  .sh-preset{ width:380px; }
+  .sh-ab{ margin-right:28px; }
+  .sh-settings{ right:150px; }
 }
-@media (max-width:820px){
-  .sh-header{ gap:16px; padding:0 18px; }
-  .sh-preset{ min-width:260px; }
-  .sh-tools{ gap:16px; }
-  .sh-chassis > #mount-body{ padding:0 18px 16px; }
+@media (max-width:980px){
+  .sh-header{ gap:14px; padding:4px 22px 0; }
+  .sh-preset{ width:300px; }
+  .sh-vendor{ display:none; }
+  .sh-ab{ margin-right:0; }
+  .sh-settings{ right:40px; }
+  .sh-chassis > #mount-body{ padding:0 18px 4px; }
 }
 @media (max-width:720px){
-  .sh-header{
-    flex-wrap:wrap;
-    height:auto;
-    padding:18px 16px;
-    row-gap:16px;
-    column-gap:14px;
-  }
-  .sh-brand{ order:0; flex:1 1 auto; }
-  .sh-tools{ order:1; flex:0 1 auto; gap:16px; }
-  .sh-preset{
-    order:2;
-    flex:1 1 100%;
-    width:100%;
-    min-width:0;
-  }
-  .sh-wordmark{ font-size:26px; letter-spacing:.34em; margin-right:-.34em; }
-  .sh-subword{ font-size:8px; letter-spacing:.2em; margin-right:-.2em; }
-  .sh-chassis > #mount-body{ padding:0 16px 16px; }
-  .sh-footer{ height:auto; min-height:44px; padding:13px 16px; gap:10px 14px; }
-  .sh-footer-line,
-  .sh-footer-slash{ font-size:9px; letter-spacing:.26em; }
+  .sh-header{ flex-wrap:wrap; height:auto; padding:18px 16px; row-gap:16px; }
+  .sh-brand{ order:0; flex:1 1 auto; gap:10px; }
+  .sh-wordmark{ width:190px; }
+  .sh-subword{ font-size:8px; letter-spacing:.3em; }
+  .sh-tools{ order:1; flex:0 1 auto; }
+  .sh-vrule{ margin:0 12px; }
+  .sh-preset{ order:2; flex:1 1 100%; width:100%; }
+  .sh-preset-nav{ flex-basis:48px; }
+  .sh-preset-core{ padding:0 10px 0 16px; }
+  .sh-settings{ right:0; width:min(318px, calc(100vw - 48px)); }
+  .sh-chassis > #mount-body{ padding:0 12px 4px; }
+  .sh-footer{ height:auto; min-height:46px; padding:14px 16px; gap:10px 14px; flex-wrap:wrap; }
+  .sh-footer-line{ font-size:8.5px; letter-spacing:.3em; }
 }
-@media (prefers-reduced-motion:reduce){
-  .sh-chassis *{ transition:none !important; }
-}
+@media (prefers-reduced-motion:reduce){ .sh-chassis *{ transition:none !important; animation:none !important; } }
 </style>
 
 <div class="sh-chassis">
   <header class="sh-header">
 
     <div class="sh-brand">
-      <div class="sh-wordmark">SHAPE</div>
-      <div class="sh-subword">PRECISION SPECTRAL EQUALIZER</div>
+      <svg class="sh-wordmark" viewBox="0 0 290 34" role="img" aria-label="SHAPE">
+        <path d="M28.5 6.5C26 3 21.5 1 15.5 1 8.5 1 2.5 4.2 2.5 9.2c0 5.4 5.1 6.8 12.7 7.8 8 1.1 13.8 2.8 13.8 8.3 0 4.9-5.6 7.7-13.2 7.7-6.6 0-11.7-2.4-14.6-6.2"/>
+        <path d="M65 1v32M93 1v32M65 17h28"/>
+        <path d="M127.5 33 144 1l16.5 32"/>
+        <path d="M196 33V1h15c8.5 0 13 4.3 13 9.9s-4.5 9.9-13 9.9h-15"/>
+        <path d="M288 1h-28v32h28M260 17h25"/>
+      </svg>
+      <div class="sh-subword">Precision Spectral Equalizer</div>
     </div>
 
     <div class="sh-preset">
-      <button class="sh-preset-nav" type="button" data-preset="prev" aria-label="Previous preset">
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-          <path d="M14.5 5.5 8 12l6.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-
-      <div class="sh-preset-core">
-        <span class="sh-preset-pad" aria-hidden="true"></span>
-        <div class="sh-preset-text">
-          <div class="sh-preset-name" data-preset-name>Master Clean</div>
-          <div class="sh-preset-tags" data-preset-tag>PRECISION · MUSICAL · NATURAL</div>
+      <div class="sh-preset-face">
+        <button class="sh-preset-nav" type="button" data-preset="prev" aria-label="Previous preset">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="sh-preset-core">
+          <div class="sh-preset-text">
+            <div class="sh-preset-name" data-preset-name>Master Clean</div>
+            <div class="sh-preset-tags" data-preset-tag>PRECISION · MUSICAL · NATURAL</div>
+          </div>
+          <button class="sh-fav" type="button" data-preset="fav" aria-label="Favourite this preset" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          </button>
         </div>
-        <button class="sh-fav" type="button" data-preset="fav" aria-label="Add preset to favourites" aria-pressed="false">
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
+        <button class="sh-preset-nav" type="button" data-preset="next" aria-label="Next preset">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
       </div>
-
-      <button class="sh-preset-nav" type="button" data-preset="next" aria-label="Next preset">
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-          <path d="M9.5 5.5 16 12l-6.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
     </div>
 
     <div class="sh-tools">
-      <button class="sh-gear" type="button" aria-label="Settings">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true" focusable="false">
-          <circle cx="12" cy="12" r="5.6"/>
-          <circle cx="12" cy="12" r="2.3"/>
-          <path d="M12 6.4V3.8M12 17.6v2.6M17.6 12h2.6M3.8 12h2.6M15.96 8.04 17.8 6.2M6.2 17.8l1.84-1.84M15.96 15.96 17.8 17.8M6.2 6.2l1.84 1.84"/>
+      <button class="sh-gear" type="button" id="sh-gear" aria-label="Settings" aria-expanded="false" aria-controls="sh-settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true">
+          <path d="M10.3 2.6h3.4l.5 2.6 1.7.8 2.3-1.4 2.4 2.4-1.4 2.3.8 1.7 2.6.5v3.4l-2.6.5-.8 1.7 1.4 2.3-2.4 2.4-2.3-1.4-1.7.8-.5 2.6h-3.4l-.5-2.6-1.7-.8-2.3 1.4-2.4-2.4 1.4-2.3-.8-1.7-2.6-.5v-3.4l2.6-.5.8-1.7-1.4-2.3 2.4-2.4 2.3 1.4 1.7-.8z"/>
+          <circle cx="12" cy="12" r="3.4"/>
         </svg>
       </button>
-
-      <div class="sh-ab">
-        <button class="sh-ab-slot sh-ab-on is-on" type="button" data-slot="A" aria-label="Snapshot A" aria-pressed="true">A</button>
+      <span class="sh-vrule" aria-hidden="true"></span>
+      <div class="sh-ab" role="group" aria-label="A B comparison">
+        <button class="sh-ab-slot is-on" type="button" data-slot="A" aria-label="Snapshot A" aria-pressed="true">A</button>
         <button class="sh-ab-slot" type="button" data-slot="B" aria-label="Snapshot B" aria-pressed="false">B</button>
       </div>
-
       <div class="sh-vendor">BY NOVA AUDIO</div>
+
+      <div class="sh-settings" id="sh-settings" role="dialog" aria-label="Settings" hidden>
+        <div class="sh-set-title">Settings <span data-set-latency>0 samples</span></div>
+        <div class="sh-set-row"><div class="sh-set-lbl">Sample rate</div><div class="sh-set-seg" data-set="sampleRate"></div></div>
+        <div class="sh-set-row"><div class="sh-set-lbl">Linear quality <b data-set-linear></b></div><div class="sh-set-seg" data-set="linearQuality"></div></div>
+        <div class="sh-set-row"><div class="sh-set-lbl">Analyser speed</div><div class="sh-set-seg" data-set="anaSpeed"></div></div>
+        <div class="sh-set-row"><div class="sh-set-lbl">Analyser tilt</div><div class="sh-set-seg" data-set="anaTilt"></div></div>
+        <div class="sh-set-row"><div class="sh-set-lbl">Auto gain <b data-set-autogain></b></div><div class="sh-set-seg" data-set="autoGain"></div></div>
+        <div class="sh-set-keys">
+          <kbd>double-click</kbd><span>add a band · on a node, bypass it</span>
+          <kbd>drag</kbd><span>frequency and gain · shift for fine</span>
+          <kbd>scroll</kbd><span>Q · slope on a cut</span>
+          <kbd>right-click / ⌫</kbd><span>remove the band</span>
+          <kbd>S</kbd><span>solo the selected band</span>
+          <kbd>[ ]</kbd><span>previous / next band</span>
+          <kbd>⌘Z / ⇧⌘Z</kbd><span>undo / redo</span>
+        </div>
+      </div>
     </div>
 
   </header>
@@ -410,8 +333,8 @@
   <div id="mount-body"><!-- graph well, band strip and bottom bar mount here --></div>
 
   <footer class="sh-footer">
-    <span class="sh-footer-line">SHAPE THE SPECTRUM</span>
+    <span class="sh-footer-line">Shape the spectrum</span>
     <span class="sh-footer-slash" aria-hidden="true">/</span>
-    <span class="sh-footer-line">REVEAL THE EMOTION</span>
+    <span class="sh-footer-line">Reveal the emotion</span>
   </footer>
 </div>

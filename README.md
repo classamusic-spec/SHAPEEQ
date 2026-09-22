@@ -25,7 +25,8 @@ All four core quality gates (Zero, Dynamic, Analyzer, Linear) are
 ## The prototype
 
 ```
-node design/prototype/build.js     # assemble
+node design/prototype/build.js           # assemble
+node design/prototype/tests/eq-audit.js  # measure the EQ: 1,000 checks
 open design/prototype/shape-ui.html
 ```
 
@@ -37,10 +38,12 @@ to add a band, drag nodes for frequency and gain, scroll for Q, alt-click
 to bypass, `delete` to remove. The knobs, shape buttons, presets, phase and
 scale selectors, undo/redo and A/B all function.
 
-Its response curve is computed, not drawn: real RBJ-cookbook biquad
-sections, cascaded per band, evaluated as `20·log₁₀|H(e^jω)|` at every
-pixel column, with genuine Butterworth cascades behind the 6–96 dB/oct cut
-slopes. The POST spectrum is the PRE spectrum multiplied by that same
+Its response curve is computed, not drawn, and the PHASE selector is
+real: ZERO runs RBJ bilinear biquads, NATURAL runs magnitude-matched
+biquads without the cramping near Nyquist, and LINEAR shows the analogue
+target a linear-phase FIR reproduces, with its latency. Cuts are
+Butterworth cascades, −3.01 dB at the corner at every slope — measured,
+not asserted, by `tests/eq-audit.js`. The POST spectrum is the PRE spectrum multiplied by that same
 response. The brief's rule — *the canvas must not lie to the user* —
 applies to the prototype too.
 
@@ -56,12 +59,14 @@ a model.
 ```
 design/
   reference/
-    SHAPE_REFERENCE_V2.webp        current visual target
+    SHAPE_REFERENCE_V3.webp        current visual target
+    SHAPE_REFERENCE_V2.webp        previous target, same direction
     SHAPE_LOCKED_REFERENCE.webp    superseded first direction
   prototype/
     build.js                       assembler
     shape-ui.html                  generated — do not hand-edit
     parts/                         the seven source parts
+    tests/eq-audit.js              filter, stability and dynamics audit
 Source/UI/ShapeTheme.h             centralised design tokens
 docs/UI_SYSTEM.md                  interface decisions and rationale
 docs/DEVELOPMENT_LOG.md            environment, scope, verification

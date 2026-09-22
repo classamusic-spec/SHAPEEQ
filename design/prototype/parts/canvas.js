@@ -1,649 +1,417 @@
 /* ===========================================================================
-   SHAPE — canvas rendering layer
-   ---------------------------------------------------------------------------
-   Pure drawing only. No state, no timers, no listeners, no DOM.
-   Every function saves and restores the context, so nothing leaks between
-   passes (globalAlpha, shadowBlur, lineDash, strokeStyle, fonts, clips).
+   SHAPE — display renderer
+   Pure drawing. No state, no listeners, no DOM. Every function saves and
+   restores the context, so nothing leaks between passes.
 
-   Assumes these already exist as globals:
-     FMIN FMAX FS NBINS
-     xOfF(f) fOfX(x) yOfDb(db) dbOfY(y) yOfFs(dbfs)
-     plot() -> {x,y,w,h}
-     respLive respStatic respRange   (dB per pixel column)
-     specDisp specPeak binF          (Float64Array(NBINS))
-     cur() -> {bands, selected, bypass}
-
-   Public:
-     bandHue(band, i[, selectedIndex])
-     drawWell(ctx, p)
-     drawAxes(ctx, p)
-     drawSpectrum(ctx, p)
-     drawResponse(ctx, p, bands)
-     drawNodes(ctx, p, bands, selectedIndex, hoverIndex)
-     drawHoverGuide(ctx, p, mouseX, freq, db)
-
-   Everything prefixed _shp / _SHP is private to this file. This file is
-   concatenated into a single inline <script>, so it is written in plain ES5
-   with top-level function declarations and no module syntax.
+   Two rulers share the plot, exactly as the reference draws them:
+     left   the analyser, +/-24 dB (0 = -18 dBFS)       -> yOfAna / yOfLevel
+     right  the EQ, whose range the SCALE control picks -> yOfDb
    =========================================================================== */
 
-/* ---- locked tokens ------------------------------------------------------ */
-var _SHP_WELL_BG    = '#0C0E12';
-var _SHP_WELL_BG2   = '#171B21';
-var _SHP_WELL_LINE  = '#262B33';
-var _SHP_ON_DARK    = '#C8CFD8';
-var _SHP_ON_DARK2   = '#7B838E';
-var _SHP_AMBER      = '#FF9E2C';
-var _SHP_CYAN       = '#45C2F0';
-var _SHP_VIOLET     = '#9B7BF0';
-var _SHP_GREEN      = '#6FC98A';
-var _SHP_ORANGE     = '#FFA53D';
-
-/* Band hue cycle — ordered so neighbouring bands never share a hue. */
-var _SHP_PALETTE = ['#45C2F0', '#9B7BF0', '#FFA53D', '#45C2F0', '#6FC98A', '#9B7BF0'];
-
-var _SHP_FONT = '400 10px Inter, system-ui, sans-serif';
-var _SHP_TAU  = Math.PI * 2;
-
-var _SHP_NYQ_DRAW = 24000;   /* analyser stops here */
-
-var _SHP_GRID_F = [20, 30, 40, 50, 70, 100, 200, 300, 400, 500, 700,
-                   1000, 2000, 3000, 4000, 5000, 7000, 10000, 20000];
-
-/* the subset that carries a label, and therefore a brighter gridline */
-var _SHP_LABEL_F = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
-var _SHP_LABEL_TEXT = {
-  20: '20', 50: '50', 100: '100', 200: '200', 500: '500',
-  1000: '1k', 2000: '2k', 5000: '5k', 10000: '10k', 20000: '20k'
+var _C = {
+  bgTop: "#161B22", bgBot: "#0A0D11",
+  gridMajor: "rgba(168,188,214,.085)", gridMinor: "rgba(168,188,214,.040)",
+  gridH: "rgba(168,188,214,.060)", zero: "rgba(226,234,244,.34)",
+  axis: "rgba(196,206,218,.62)", axisDim: "rgba(196,206,218,.42)",
+  amber: "#FF9E2C", cyan: "#45C2F0", violet: "#9B7BF0", green: "#6FC98A", orange: "#FFA53D",
+  blue: "#3FA0F0"
 };
+/* the band hue cycle, ordered so neighbours never share a hue */
+var _PALETTE = ["#45C2F0", "#9B7BF0", "#FFA53D", "#3FA0F0", "#6FC98A", "#9B7BF0", "#45C2F0"];
+var _FONT = "Inter, system-ui, -apple-system, sans-serif";
+var _TAU = Math.PI * 2;
 
-var _SHP_DB_TICKS = [24, 18, 12, 6, 0, -6, -12, -18, -24];
-var _SHP_FS_TICKS = [12, 6, 0, -6, -12];
+var _LABEL_F = { 20: "20", 50: "50", 100: "100", 200: "200", 500: "500",
+                 1000: "1k", 2000: "2k", 5000: "5k", 10000: "10k", 20000: "20k" };
+var _GRID_F = (function () {
+  var out = [], d, m;
+  for (d = 10; d <= 10000; d *= 10) for (m = 1; m <= 9; m++) out.push(m * d);
+  out.push(20000);
+  return out.filter(function (f) { return f >= 15 && f <= 28000; });
+})();
 
-/* types that carry no gain — their node rides the 0 dB line */
-var _SHP_NO_GAIN = { lowcut: 1, highcut: 1, notch: 1, bandpass: 1 };
+function _clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+function _rgba(hex, a) {
+  var n = parseInt(String(hex).replace("#", ""), 16);
+  return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a + ")";
+}
+function _mix(hex, withHex, t) {
+  var a = parseInt(hex.slice(1), 16), b = parseInt(withHex.slice(1), 16);
+  var r = Math.round(((a >> 16) & 255) * (1 - t) + ((b >> 16) & 255) * t);
+  var g = Math.round(((a >> 8) & 255) * (1 - t) + ((b >> 8) & 255) * t);
+  var bl = Math.round((a & 255) * (1 - t) + (b & 255) * t);
+  return "rgb(" + r + "," + g + "," + bl + ")";
+}
+function _rr(ctx, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
 
-/* Ticks for the right-hand fine ruler. That ruler's range is set by the SCALE
-   control, so the ticks follow it: at the default (±12) this is exactly the
-   locked list, and at any other setting the ruler stays honest rather than
-   printing a number against the wrong line. */
-function _shpFineTicks() {
-  var fs = 12;
-  if (typeof cur === 'function') {
-    var st = cur();
-    if (st && typeof st.fineScale === 'number' && isFinite(st.fineScale) && st.fineScale > 0) {
-      fs = st.fineScale;
-    }
+/* ---- hue ---------------------------------------------------------------- */
+/* Selection wins: amber marks the current band and nothing else, which is
+   what keeps one node readable against a full spectrum. A dynamic band is
+   violet. Otherwise a band takes its place in the cycle.                    */
+function bandHue(band, i, selectedIndex) {
+  var sel = typeof selectedIndex === "number" ? selectedIndex : cur().selected;
+  if (i === sel) return _C.amber;
+  if (band.dyn && band.dyn.on) return _C.violet;
+  /* a low cut reads as cyan, the top band as green, as in the reference */
+  if (band.type === "lowcut") return _C.cyan;
+  var n = cur().bands.length;
+  if (i === n - 1 && band.freq > 8000) return _C.green;
+  return _PALETTE[i % _PALETTE.length];
+}
+
+/* ---- the well: ground, grid, zero line ---------------------------------- */
+function drawWell(ctx, p) {
+  ctx.save();
+  var g = ctx.createLinearGradient(0, 0, 0, CH);
+  g.addColorStop(0, _C.bgTop);
+  g.addColorStop(1, _C.bgBot);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, CW, CH);
+
+  ctx.beginPath(); ctx.rect(p.x, p.y, p.w, p.h); ctx.clip();
+  ctx.lineWidth = 1;
+
+  for (var i = 0; i < _GRID_F.length; i++) {
+    var f = _GRID_F[i], x = Math.round(xOfF(f)) + 0.5;
+    ctx.strokeStyle = _LABEL_F[f] ? _C.gridMajor : _C.gridMinor;
+    ctx.beginPath(); ctx.moveTo(x, p.y); ctx.lineTo(x, p.y + p.h); ctx.stroke();
   }
-  if (fs === 12) return _SHP_FS_TICKS;
-  return [fs, fs / 2, 0, -fs / 2, -fs];
-}
-
-
-/* ---- private helpers ---------------------------------------------------- */
-
-function _shpClamp(v, lo, hi) {
-  return v < lo ? lo : (v > hi ? hi : v);
-}
-
-/* plot rect, with a fallback so a caller may omit it */
-function _shpRect(p) {
-  if (p && typeof p.w === 'number') return p;
-  return (typeof plot === 'function') ? plot() : { x: 0, y: 0, w: 0, h: 0 };
-}
-
-/* '#45C2F0' + alpha -> 'rgba(69,194,240,.28)' */
-function _shpRgba(hex, a) {
-  var h = String(hex == null ? '' : hex).replace('#', '');
-  if (h.length === 3) {
-    h = h.charAt(0) + h.charAt(0) + h.charAt(1) + h.charAt(1) + h.charAt(2) + h.charAt(2);
+  for (var v = -ANA_RANGE; v <= ANA_RANGE; v += 6) {
+    if (v === 0) continue;
+    var y = Math.round(yOfAna(v)) + 0.5;
+    ctx.strokeStyle = _C.gridH;
+    ctx.beginPath(); ctx.moveTo(p.x, y); ctx.lineTo(p.x + p.w, y); ctx.stroke();
   }
-  var n = parseInt(h, 16);
-  if (h.length !== 6 || isNaN(n)) return 'rgba(200,210,222,' + a + ')';
-  return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
-}
-
-/* resolve the selected index when a caller did not hand one over */
-function _shpSelected(selectedIndex) {
-  if (typeof selectedIndex === 'number') return selectedIndex;
-  if (typeof cur === 'function') {
-    var st = cur();
-    if (st && typeof st.selected === 'number') return st.selected;
+  /* above Nyquist there is no defined response: shade it, quietly */
+  var nx = xOfF(NYQ);
+  if (nx < p.x + p.w) {
+    ctx.fillStyle = "rgba(0,0,0,.28)";
+    ctx.fillRect(nx, p.y, p.x + p.w - nx, p.h);
   }
-  return -1;
+  ctx.restore();
+}
+function drawZeroLine(ctx, p) {
+  ctx.save();
+  var y = Math.round(yOfDb(0)) + 0.5;
+  var g = ctx.createLinearGradient(p.x, 0, p.x + p.w, 0);
+  g.addColorStop(0, "rgba(226,234,244,.20)");
+  g.addColorStop(0.08, _C.zero);
+  g.addColorStop(0.92, _C.zero);
+  g.addColorStop(1, "rgba(226,234,244,.20)");
+  ctx.strokeStyle = g; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(p.x, y); ctx.lineTo(p.x + p.w, y); ctx.stroke();
+  ctx.restore();
 }
 
-function _shpBands(bands) {
-  if (bands && bands.length) return bands;
-  if (typeof cur === 'function') {
-    var st = cur();
-    if (st && st.bands) return st.bands;
+/* ---- rulers ------------------------------------------------------------- */
+function drawAxes(ctx, p) {
+  ctx.save();
+  ctx.font = "400 10px " + _FONT;
+  ctx.fillStyle = _C.axis;
+
+  /* left: analyser */
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  for (var v = ANA_RANGE; v >= -ANA_RANGE; v -= 6) {
+    ctx.fillText((v > 0 ? "+" : "") + v, p.x - 12, yOfAna(v));
   }
-  return [];
-}
 
-/* gain the node actually sits at: static gain plus live dynamic movement */
-function _shpBandGain(band) {
-  if (!band) return 0;
-  if (_SHP_NO_GAIN[band.type]) return 0;
-  var g = (typeof band.gain === 'number') ? band.gain : 0;
-  if (band.dyn && band.dyn.on && typeof band.dyn.cur === 'number') g += band.dyn.cur;
-  return g;
-}
-
-/* open polyline along a dB array, one sample per pixel column.
-   Does not begin or close the path — the caller owns that. */
-function _shpRespPath(ctx, p, arr) {
-  var n = arr.length;
-  if (n < 2) return false;
-  var lo = p.y - 200, hi = p.y + p.h + 200;
-  for (var i = 0; i < n; i++) {
-    var px = p.x + (i / (n - 1)) * p.w;
-    var py = _shpClamp(yOfDb(arr[i]), lo, hi);
-    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  /* right: the EQ, with its unit on top and a rail spanning its range */
+  var S = ST.fineScale, rx = p.x + p.w + 12;
+  ctx.textAlign = "left";
+  ctx.fillText("dB", rx, yOfAna(ANA_RANGE));
+  var ticks = [S, S / 2, 0, -S / 2, -S];
+  for (var i = 0; i < ticks.length; i++) {
+    var t = ticks[i];
+    ctx.fillText((t > 0 ? "+" : "") + (Math.abs(t) % 1 ? t.toFixed(1) : t), rx, yOfDb(t));
   }
-  return true;
+  ctx.strokeStyle = "rgba(196,206,218,.22)"; ctx.lineWidth = 1;
+  var railX = Math.round(p.x + p.w + 4) + 0.5;
+  ctx.beginPath(); ctx.moveTo(railX, yOfDb(S * 1.1)); ctx.lineTo(railX, yOfDb(-S * 1.1)); ctx.stroke();
+
+  /* bottom: frequency */
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  for (var f in _LABEL_F) ctx.fillText(_LABEL_F[f], xOfF(+f), p.y + p.h + 12);
+  ctx.restore();
 }
 
-/* open polyline across the analyser bins. Returns the span it covered so the
-   caller can close it down to the floor, or null when nothing was drawn.
-   Deliberately point-to-point — the analyser must stay jagged. */
-function _shpSpecPath(ctx, p, arr) {
-  if (!arr || !arr.length) return null;
-  var n = Math.min(NBINS, arr.length, binF.length);
-  var lo = p.y - 40, hi = p.y + p.h + 40;
-  var started = false, first = 0, last = 0;
-  for (var i = 0; i < n; i++) {
+/* ---- analyser ----------------------------------------------------------- */
+function _specPath(ctx, p, arr, offsetFn) {
+  var top = Math.min(FMAX, NYQ), started = false, first = 0, last = 0;
+  for (var i = 0; i < NBINS; i++) {
     var f = binF[i];
-    if (f > _SHP_NYQ_DRAW) break;
-    var x = xOfF(f);
-    var y = _shpClamp(yOfLevel(arr[i]), lo, hi);
-    if (!started) { ctx.moveTo(x, y); first = x; started = true; }
-    else ctx.lineTo(x, y);
+    if (f > top) break;
+    var x = p.x + binT[i] * p.w;
+    var lv = arr[i] + ST.input + anaTiltAt(f) + (offsetFn ? offsetFn(f) : 0);
+    var y = _clamp(yOfLevel(lv), p.y - 40, p.y + p.h + 40);
+    if (!started) { ctx.moveTo(x, y); first = x; started = true; } else ctx.lineTo(x, y);
     last = x;
   }
   return started ? { first: first, last: last } : null;
 }
-
-function _shpRoundRectPath(ctx, x, y, w, h, r) {
-  r = Math.min(r, w / 2, h / 2);
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.arcTo(x + w, y, x + w, y + r, r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
-  ctx.lineTo(x + r, y + h);
-  ctx.arcTo(x, y + h, x, y + h - r, r);
-  ctx.lineTo(x, y + r);
-  ctx.arcTo(x, y, x + r, y, r);
-  ctx.closePath();
-}
-
-function _shpFmtHz(f) {
-  if (typeof f !== 'number' || !isFinite(f)) return '--';
-  if (f >= 10000) return (Math.round(f / 100) / 10) + ' kHz';
-  if (f >= 1000)  return (Math.round(f / 10) / 100) + ' kHz';
-  return Math.round(f) + ' Hz';
-}
-
-function _shpFmtDb(db) {
-  if (typeof db !== 'number' || !isFinite(db)) return '-- dB';
-  var v = Math.abs(db) < 0.05 ? 0 : db;
-  var sign = v < 0 ? '−' : '+';
-  return sign + Math.abs(v).toFixed(1) + ' dB';
-}
-
-
-/* ---- hue ---------------------------------------------------------------- */
-/* Selection wins over everything: amber marks the current band and nothing
-   else, which is what keeps one node readable against a full spectrum.
-   A dynamic band is violet. Otherwise the band takes its slot in the cycle. */
-function bandHue(band, i, selectedIndex) {
-  if (!band) return _SHP_CYAN;
-  var sel = _shpSelected(selectedIndex);
-  if (typeof i === 'number' && i >= 0 && i === sel) return _SHP_AMBER;
-  if (band.dyn && band.dyn.on) return _SHP_VIOLET;
-  var idx = (typeof i === 'number' && i >= 0) ? (i % _SHP_PALETTE.length) : 0;
-  return _SHP_PALETTE[idx];
-}
-
-
-/* ---- the well: ground, then grid ---------------------------------------- */
-function drawWell(ctx, p) {
-  ctx.save();
-  p = _shpRect(p);
-  if (p.w <= 0 || p.h <= 0) { ctx.restore(); return; }
-
-  var bottom = p.y + p.h, right = p.x + p.w, i, v, x, y;
-
-  var g = ctx.createLinearGradient(0, p.y, 0, bottom);
-  g.addColorStop(0, _SHP_WELL_BG2);
-  g.addColorStop(1, _SHP_WELL_BG);
-  ctx.fillStyle = g;
-  ctx.fillRect(p.x, p.y, p.w, p.h);
-
-  ctx.beginPath();
-  ctx.rect(p.x, p.y, p.w, p.h);
-  ctx.clip();
-
-  ctx.lineWidth = 1;
-
-  for (i = 0; i < _SHP_GRID_F.length; i++) {
-    v = _SHP_GRID_F[i];
-    x = Math.round(xOfF(v)) + 0.5;
-    if (x < p.x - 1 || x > right + 1) continue;
-    ctx.strokeStyle = _SHP_LABEL_TEXT[v] ? 'rgba(255,255,255,.10)' : 'rgba(255,255,255,.045)';
-    ctx.beginPath(); ctx.moveTo(x, p.y); ctx.lineTo(x, bottom); ctx.stroke();
-  }
-
-  for (i = 0; i < _SHP_DB_TICKS.length; i++) {
-    v = _SHP_DB_TICKS[i];
-    y = Math.round(yOfDb(v)) + 0.5;
-    if (y < p.y - 1 || y > bottom + 1) continue;
-    ctx.strokeStyle = (v === 0) ? 'rgba(255,255,255,.16)' : 'rgba(255,255,255,.055)';
-    ctx.beginPath(); ctx.moveTo(p.x, y); ctx.lineTo(right, y); ctx.stroke();
-  }
-
-  /* hairline lip, so the panel reads as sunk into the faceplate */
-  ctx.strokeStyle = _SHP_WELL_LINE;
-  ctx.strokeRect(Math.round(p.x) + 0.5, Math.round(p.y) + 0.5,
-                 Math.round(p.w) - 1, Math.round(p.h) - 1);
-
-  ctx.restore();
-}
-
-
-/* ---- axes: EQ gain left, analyser level right, frequency below ---------- */
-function drawAxes(ctx, p) {
-  ctx.save();
-  p = _shpRect(p);
-  if (p.w <= 0 || p.h <= 0) { ctx.restore(); return; }
-
-  var bottom = p.y + p.h, right = p.x + p.w, i, v, y, x;
-
-  ctx.font = _SHP_FONT;
-  ctx.fillStyle = _SHP_ON_DARK2;
-
-  /* left — EQ gain in dB */
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'middle';
-  for (i = 0; i < _SHP_DB_TICKS.length; i++) {
-    v = _SHP_DB_TICKS[i];
-    y = yOfDb(v);
-    if (y < p.y - 1 || y > bottom + 1) continue;
-    ctx.fillText((v > 0 ? '+' : '') + v, p.x - 9, y);
-  }
-  ctx.textBaseline = 'top';
-  ctx.fillText('dB', p.x - 9, 2);
-
-  /* right — the fine ruler */
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  var fine = _shpFineTicks();
-  for (i = 0; i < fine.length; i++) {
-    v = fine[i];
-    y = yOfFs(v);
-    if (y < p.y - 1 || y > bottom + 1) continue;
-    v = Math.round(v * 10) / 10;
-    ctx.fillText((v > 0 ? '+' : '') + v, right + 9, y);
-  }
-
-  /* bottom — frequency */
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-  for (i = 0; i < _SHP_LABEL_F.length; i++) {
-    v = _SHP_LABEL_F[i];
-    x = xOfF(v);
-    if (x < p.x - 6 || x > right + 6) continue;
-    ctx.fillText(_SHP_LABEL_TEXT[v], x, bottom + 8);
-  }
-
-  ctx.restore();
-}
-
-
-/* ---- spectrum: behind everything, always neutral grey ------------------- */
 function drawSpectrum(ctx, p) {
   ctx.save();
-  p = _shpRect(p);
-  if (p.w <= 0 || p.h <= 0 ||
-      typeof specDisp === 'undefined' || !specDisp || !specDisp.length ||
-      typeof binF === 'undefined' || !binF || !binF.length) {
-    ctx.restore(); return;
-  }
-
-  var floorY = p.y + p.h;
+  ctx.beginPath(); ctx.rect(p.x, p.y, p.w, p.h); ctx.clip();
+  var floorY = p.y + p.h + 2;
 
   ctx.beginPath();
-  ctx.rect(p.x, p.y, p.w, p.h);
-  ctx.clip();
-
-  /* body */
-  ctx.beginPath();
-  var span = _shpSpecPath(ctx, p, specDisp);
+  var span = _specPath(ctx, p, specDisp, null);
   if (!span) { ctx.restore(); return; }
-  ctx.lineTo(span.last, floorY + 2);
-  ctx.lineTo(span.first, floorY + 2);
-  ctx.closePath();
-
-  var g = ctx.createLinearGradient(0, p.y, 0, floorY);
-  g.addColorStop(0, 'rgba(200,210,222,.16)');
-  g.addColorStop(1, 'rgba(200,210,222,.03)');
+  ctx.lineTo(span.last, floorY); ctx.lineTo(span.first, floorY); ctx.closePath();
+  var g = ctx.createLinearGradient(0, p.y + p.h * 0.25, 0, floorY);
+  g.addColorStop(0, "rgba(186,196,210,.34)");
+  g.addColorStop(0.55, "rgba(150,160,176,.20)");
+  g.addColorStop(1, "rgba(110,120,136,.08)");
   ctx.fillStyle = g;
   ctx.fill();
 
-  /* contour — redrawn open so the closing edges never get stroked */
-  ctx.lineWidth = 1;
-  ctx.lineJoin = 'round';
-  ctx.strokeStyle = 'rgba(210,218,228,.45)';
-  ctx.beginPath();
-  _shpSpecPath(ctx, p, specDisp);
-  ctx.stroke();
-
-  /* peak hold */
-  if (typeof specPeak !== 'undefined' && specPeak && specPeak.length) {
-    ctx.strokeStyle = 'rgba(255,255,255,.14)';
+  ctx.lineWidth = 1; ctx.lineJoin = "round";
+  ctx.strokeStyle = "rgba(214,221,230,.52)";
+  ctx.beginPath(); _specPath(ctx, p, specDisp, null); ctx.stroke();
+  ctx.restore();
+}
+/* POST: the same bins through the computed response, then the output
+   trim and auto gain — it moves when a node moves, because it is the
+   same number the curve is drawn from                                   */
+function drawSpectrumPost(ctx, p) {
+  ctx.save();
+  ctx.beginPath(); ctx.rect(p.x, p.y, p.w, p.h); ctx.clip();
+  var post = function (f) { return respAtF(f) + ST.output + autoGainDb(); };
+  var both = ST.analyzerMode === "both";
+  if (!both) {
     ctx.beginPath();
-    if (_shpSpecPath(ctx, p, specPeak)) ctx.stroke();
+    var span = _specPath(ctx, p, specDisp, post);
+    if (span) {
+      ctx.lineTo(span.last, p.y + p.h + 2); ctx.lineTo(span.first, p.y + p.h + 2); ctx.closePath();
+      var g = ctx.createLinearGradient(0, p.y + p.h * 0.25, 0, p.y + p.h);
+      g.addColorStop(0, "rgba(155,123,240,.24)");
+      g.addColorStop(1, "rgba(155,123,240,.04)");
+      ctx.fillStyle = g; ctx.fill();
+    }
   }
-
+  ctx.lineWidth = 1.2; ctx.lineJoin = "round";
+  ctx.strokeStyle = "rgba(186,168,248,.78)";
+  ctx.beginPath(); _specPath(ctx, p, specDisp, post); ctx.stroke();
   ctx.restore();
 }
 
-
 /* ---- the curve ---------------------------------------------------------- */
-
-/* Horizontal gradient carrying each band's hue at that band's frequency, so
-   the curve shifts colour along its length toward whichever band is local.
-   addColorStop throws on an out-of-range offset and misbehaves out of order,
-   so offsets are clamped and sorted before any of them is added. */
-function _shpCurveGradient(ctx, p, bands) {
-  var g = ctx.createLinearGradient(p.x, 0, p.x + p.w, 0);
-  var stops = [], i, b;
-
+function _respPath(ctx, p, arr) {
+  var n = arr.length, lo = p.y - 300, hi = p.y + p.h + 300;
+  for (var i = 0; i < n; i++) {
+    var x = p.x + (i / (n - 1)) * p.w, y = _clamp(yOfDb(arr[i]), lo, hi);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+}
+function _respPathBack(ctx, p, arr) {
+  var n = arr.length, lo = p.y - 300, hi = p.y + p.h + 300;
+  for (var i = n - 1; i >= 0; i--) ctx.lineTo(p.x + (i / (n - 1)) * p.w, _clamp(yOfDb(arr[i]), lo, hi));
+}
+function _hueGradient(ctx, p, bands) {
+  var g = ctx.createLinearGradient(p.x, 0, p.x + p.w, 0), stops = [], i;
   for (i = 0; i < bands.length; i++) {
-    b = bands[i];
-    if (!b || b.on === false) continue;
-    stops.push({ o: _shpClamp((xOfF(b.freq) - p.x) / (p.w || 1), 0, 1), c: bandHue(b, i) });
+    if (!bands[i].on) continue;
+    stops.push({ o: _clamp((xOfF(bands[i].freq) - p.x) / p.w, 0, 1), c: bandHue(bands[i], i) });
   }
-  /* every band muted — keep a hue rather than an invisible curve */
-  if (!stops.length) {
-    for (i = 0; i < bands.length; i++) {
-      b = bands[i];
-      if (!b) continue;
-      stops.push({ o: _shpClamp((xOfF(b.freq) - p.x) / (p.w || 1), 0, 1), c: bandHue(b, i) });
-    }
-  }
-  if (!stops.length) {
-    g.addColorStop(0, _SHP_CYAN);
-    g.addColorStop(1, _SHP_CYAN);
-    return g;
-  }
-
-  stops.sort(function (a, c) { return a.o - c.o; });
-
-  /* anchor both ends so the curve never fades out at the edges */
+  if (!stops.length) { g.addColorStop(0, _C.cyan); g.addColorStop(1, _C.cyan); return g; }
+  stops.sort(function (a, b) { return a.o - b.o; });
   g.addColorStop(0, stops[0].c);
-  for (i = 0; i < stops.length; i++) {
-    if (stops[i].o > 0 && stops[i].o < 1) g.addColorStop(stops[i].o, stops[i].c);
-  }
+  for (i = 0; i < stops.length; i++) if (stops[i].o > 0 && stops[i].o < 1) g.addColorStop(stops[i].o, stops[i].c);
   g.addColorStop(1, stops[stops.length - 1].c);
   return g;
 }
 
-/* violet wash between the bands at rest and the bands pushed to their limit */
-function _shpDynamicRegion(ctx, p, bands) {
-  var any = false, i;
-  for (i = 0; i < bands.length; i++) {
-    if (bands[i] && bands[i].dyn && bands[i].dyn.on && bands[i].on !== false) { any = true; break; }
-  }
-  if (!any) return;
-  if (typeof respStatic === 'undefined' || typeof respRange === 'undefined') return;
-  if (!respStatic || !respRange || respStatic.length < 2 || respRange.length < 2) return;
-
-  var lo = p.y - 200, hi = p.y + p.h + 200;
-  var n = respStatic.length, m = respRange.length;
-
-  ctx.beginPath();
-  for (i = 0; i < n; i++) {
-    var px = p.x + (i / (n - 1)) * p.w;
-    var py = _shpClamp(yOfDb(respStatic[i]), lo, hi);
-    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-  }
-  for (i = m - 1; i >= 0; i--) {
-    ctx.lineTo(p.x + (i / (m - 1)) * p.w, _shpClamp(yOfDb(respRange[i]), lo, hi));
-  }
-  ctx.closePath();
-  ctx.fillStyle = 'rgba(155,123,240,.13)';
-  ctx.fill();
-}
-
 function drawResponse(ctx, p, bands) {
+  if (!respLive.length) return;
   ctx.save();
-  p = _shpRect(p);
-  if (p.w <= 0 || p.h <= 0 ||
-      typeof respLive === 'undefined' || !respLive || respLive.length === 0) {
-    ctx.restore(); return;
-  }
+  ctx.beginPath(); ctx.rect(p.x, p.y, p.w, p.h); ctx.clip();
+  var hue = _hueGradient(ctx, p, bands);
 
-  bands = _shpBands(bands);
-
-  ctx.beginPath();
-  ctx.rect(p.x, p.y, p.w, p.h);
-  ctx.clip();
-
-  var grad = _shpCurveGradient(ctx, p, bands);
-  var zero = yOfDb(0);
-
-  /* 2 — fill, curve closed down onto the 0 dB line */
-  ctx.beginPath();
-  if (!_shpRespPath(ctx, p, respLive)) { ctx.restore(); return; }
-  ctx.lineTo(p.x + p.w, zero);
-  ctx.lineTo(p.x, zero);
-  ctx.closePath();
-
-  ctx.globalAlpha = 0.20;
-  ctx.fillStyle = grad;
-  ctx.fill();
-  ctx.globalAlpha = 1;
-
-  /* second pass inside that same region: a vertical wash that fades out
-     toward the top and bottom of the well, so a deep excursion tints the
-     ground instead of flooding it with a slab of colour */
+  /* tonal fill: between the curve and the line-drawn baseline (cuts), so a
+     cut is shown by its line and never floods the plot. A wash, then an
+     inner glow that concentrates colour against the curve.               */
   ctx.save();
-  ctx.beginPath();
-  _shpRespPath(ctx, p, respLive);
-  ctx.lineTo(p.x + p.w, zero);
-  ctx.lineTo(p.x, zero);
-  ctx.closePath();
+  ctx.beginPath(); _respPath(ctx, p, respLive); _respPathBack(ctx, p, respBase); ctx.closePath();
   ctx.clip();
-  var vg = ctx.createLinearGradient(0, p.y, 0, p.y + p.h);
-  var zt = _shpClamp((zero - p.y) / p.h, 0.02, 0.98);
-  vg.addColorStop(0, 'rgba(210,222,238,0)');
-  vg.addColorStop(zt, 'rgba(210,222,238,.07)');
-  vg.addColorStop(1, 'rgba(210,222,238,0)');
-  ctx.fillStyle = vg;
+  ctx.fillStyle = hue; ctx.globalAlpha = 0.16;
   ctx.fillRect(p.x, p.y, p.w, p.h);
+  ctx.strokeStyle = hue; ctx.lineJoin = "round";
+  ctx.globalAlpha = 0.20; ctx.lineWidth = 34;
+  ctx.beginPath(); _respPath(ctx, p, respLive); ctx.stroke();
+  ctx.globalAlpha = 0.24; ctx.lineWidth = 14;
+  ctx.beginPath(); _respPath(ctx, p, respLive); ctx.stroke();
   ctx.restore();
 
-  /* 5 — dynamic range region. Drawn here rather than last so the violet
-     wash stays under the curve: over the core stroke it would veil it. */
-  _shpDynamicRegion(ctx, p, bands);
+  drawZeroLine(ctx, p);
 
-  /* 3 — glow, two widening strokes rather than a shadow blur */
-  ctx.lineJoin = 'round';
-  ctx.lineCap = 'round';
-  ctx.strokeStyle = grad;
-  ctx.shadowBlur = 0;
+  /* dynamic range envelope: violet between rest and the band's limit */
+  var anyDyn = false;
+  for (var i = 0; i < bands.length; i++) if (bands[i].on && bands[i].dyn.on) anyDyn = true;
+  if (anyDyn) {
+    ctx.beginPath(); _respPath(ctx, p, respStatic); _respPathBack(ctx, p, respRange); ctx.closePath();
+    ctx.fillStyle = "rgba(155,123,240,.16)"; ctx.fill();
+    ctx.setLineDash([3, 4]); ctx.lineWidth = 1; ctx.strokeStyle = "rgba(190,172,255,.45)";
+    ctx.beginPath(); _respPath(ctx, p, respRange); ctx.stroke();
+    ctx.setLineDash([]);
+  }
 
-  ctx.globalAlpha = 0.18;
-  ctx.lineWidth = 6;
-  ctx.beginPath(); _shpRespPath(ctx, p, respLive); ctx.stroke();
-
-  ctx.globalAlpha = 0.30;
-  ctx.lineWidth = 3;
-  ctx.beginPath(); _shpRespPath(ctx, p, respLive); ctx.stroke();
-
-  /* 4 — core */
-  ctx.globalAlpha = 1;
-  ctx.lineWidth = 2.25;
-  ctx.beginPath(); _shpRespPath(ctx, p, respLive); ctx.stroke();
-
+  /* the line: two glow passes, the core, then a hot centre */
+  ctx.lineJoin = "round"; ctx.lineCap = "round";
+  ctx.strokeStyle = hue;
+  ctx.globalAlpha = 0.14; ctx.lineWidth = 9;
+  ctx.beginPath(); _respPath(ctx, p, respLive); ctx.stroke();
+  ctx.globalAlpha = 0.32; ctx.lineWidth = 4.5;
+  ctx.beginPath(); _respPath(ctx, p, respLive); ctx.stroke();
+  ctx.globalAlpha = 1; ctx.lineWidth = 2.2;
+  ctx.beginPath(); _respPath(ctx, p, respLive); ctx.stroke();
+  ctx.globalAlpha = 0.42; ctx.lineWidth = 0.9; ctx.strokeStyle = "#FFFFFF";
+  ctx.beginPath(); _respPath(ctx, p, respLive); ctx.stroke();
   ctx.restore();
 }
 
+/* ---- solo: audition the band's region, dim the rest --------------------- */
+function drawSoloMask(ctx, p, band) {
+  if (!band) return;
+  var lo, hi;
+  if (band.type === "lowshelf" || band.type === "highcut") { lo = FMIN; hi = band.freq * 1.4; }
+  else if (band.type === "highshelf" || band.type === "lowcut") { lo = band.freq / 1.4; hi = FMAX; }
+  else {
+    var half = Math.max(bandwidthOct(band), 0.15) / 2;
+    lo = band.freq / Math.pow(2, half); hi = band.freq * Math.pow(2, half);
+  }
+  var x0 = xOfF(lo), x1 = xOfF(hi);
+  ctx.save();
+  ctx.fillStyle = "rgba(6,8,11,.58)";
+  ctx.fillRect(p.x, p.y, x0 - p.x, p.h);
+  ctx.fillRect(x1, p.y, p.x + p.w - x1, p.h);
+  var g = ctx.createLinearGradient(0, p.y, 0, p.y + p.h);
+  g.addColorStop(0, "rgba(255,158,44,.10)"); g.addColorStop(1, "rgba(255,158,44,.02)");
+  ctx.fillStyle = g; ctx.fillRect(x0, p.y, x1 - x0, p.h);
+  ctx.strokeStyle = "rgba(255,158,44,.45)"; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(Math.round(x0) + 0.5, p.y); ctx.lineTo(Math.round(x0) + 0.5, p.y + p.h);
+  ctx.moveTo(Math.round(x1) + 0.5, p.y); ctx.lineTo(Math.round(x1) + 0.5, p.y + p.h);
+  ctx.stroke();
+  ctx.font = "600 9px " + _FONT; ctx.fillStyle = "rgba(255,180,92,.9)";
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  ctx.fillText("SOLO", (x0 + x1) / 2, p.y + 6);
+  ctx.restore();
+}
 
-/* ---- nodes: small, crisp, glowing rings --------------------------------- */
+/* ---- nodes -------------------------------------------------------------- */
 function drawNodes(ctx, p, bands, selectedIndex, hoverIndex) {
   ctx.save();
-  p = _shpRect(p);
-  if (p.w <= 0 || p.h <= 0) { ctx.restore(); return; }
+  ctx.beginPath(); ctx.rect(p.x - 12, p.y - 12, p.w + 24, p.h + 24); ctx.clip();
+  /* selected last, so it is never covered */
+  var order = [];
+  for (var i = 0; i < bands.length; i++) if (i !== selectedIndex) order.push(i);
+  if (selectedIndex >= 0 && selectedIndex < bands.length) order.push(selectedIndex);
 
-  bands = _shpBands(bands);
-  var sel = _shpSelected(selectedIndex);
-  var hov = (typeof hoverIndex === 'number') ? hoverIndex : -1;
+  for (var k = 0; k < order.length; k++) {
+    var idx = order[k], band = bands[idx];
+    var x = xOfF(band.freq), y = _clamp(yOfDb(nodeGainDb(band)), p.y, p.y + p.h);
+    var hue = bandHue(band, idx, selectedIndex);
+    var sel = idx === selectedIndex, hov = idx === hoverIndex;
 
-  ctx.beginPath();
-  ctx.rect(p.x, p.y, p.w, p.h);
-  ctx.clip();
-
-  for (var i = 0; i < bands.length; i++) {
-    var band = bands[i];
-    if (!band) continue;
-
-    var x = xOfF(band.freq);
-    if (x < p.x - 24 || x > p.x + p.w + 24) continue;
-    var y = yOfDb(_shpBandGain(band));
-    if (y < p.y - 40 || y > p.y + p.h + 40) continue;
-
-    var hue = bandHue(band, i, sel);
-    var off = (band.on === false);
-
-    /* outer glow — skipped on a bypassed band */
-    if (!off) {
-      var rg = ctx.createRadialGradient(x, y, 0, x, y, 16);
-      rg.addColorStop(0, _shpRgba(hue, 0.28));
-      rg.addColorStop(0.55, _shpRgba(hue, 0.12));
-      rg.addColorStop(1, _shpRgba(hue, 0));
-      ctx.fillStyle = rg;
-      ctx.beginPath(); ctx.arc(x, y, 16, 0, _SHP_TAU); ctx.fill();
+    if (!band.on) {
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = "#12161C";
+      ctx.beginPath(); ctx.arc(x, y, 6.5, 0, _TAU); ctx.fill();
+      ctx.strokeStyle = "rgba(160,170,184,.8)"; ctx.lineWidth = 1.5; ctx.setLineDash([2, 2]);
+      ctx.beginPath(); ctx.arc(x, y, 6.5, 0, _TAU); ctx.stroke();
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
+      continue;
     }
 
-    /* dark core */
-    ctx.fillStyle = '#12151A';
-    ctx.beginPath(); ctx.arc(x, y, 7, 0, _SHP_TAU); ctx.fill();
+    var R = sel ? 9 : 7.5;
+    var glow = ctx.createRadialGradient(x, y, 0, x, y, R + 12);
+    glow.addColorStop(0, _rgba(hue, sel ? 0.45 : 0.38));
+    glow.addColorStop(0.5, _rgba(hue, 0.14));
+    glow.addColorStop(1, _rgba(hue, 0));
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(x, y, R + 12, 0, _TAU); ctx.fill();
 
-    /* ring */
-    ctx.globalAlpha = off ? 0.35 : 1;
-    ctx.strokeStyle = hue;
-    ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.arc(x, y, 7, 0, _SHP_TAU); ctx.stroke();
-    ctx.globalAlpha = 1;
-
-    /* hover halo — a hairline, never a fatter node */
-    if (i === hov && i !== sel) {
-      ctx.globalAlpha = 0.40;
-      ctx.strokeStyle = hue;
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(x, y, 11, 0, _SHP_TAU); ctx.stroke();
-      ctx.globalAlpha = 1;
-    }
-
-    /* selection ring */
-    if (i === sel) {
-      ctx.globalAlpha = 0.60;
-      ctx.strokeStyle = _SHP_AMBER;
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(x, y, 12, 0, _SHP_TAU); ctx.stroke();
-      ctx.globalAlpha = 1;
+    if (sel) {
+      /* the selected node is hollow: a dark eye in an amber ring */
+      ctx.fillStyle = "#0D1015";
+      ctx.beginPath(); ctx.arc(x, y, R, 0, _TAU); ctx.fill();
+      ctx.strokeStyle = hue; ctx.lineWidth = 2.6;
+      ctx.beginPath(); ctx.arc(x, y, R - 1.3, 0, _TAU); ctx.stroke();
+      ctx.strokeStyle = _rgba(hue, 0.5); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(x, y, R + 3.5, 0, _TAU); ctx.stroke();
+    } else {
+      /* the rest are filled jewels with a bright rim */
+      var body = ctx.createRadialGradient(x - 2, y - 2.5, 0.5, x, y, R);
+      body.addColorStop(0, _mix(hue, "#FFFFFF", 0.55));
+      body.addColorStop(0.6, hue);
+      body.addColorStop(1, _mix(hue, "#000000", 0.25));
+      ctx.fillStyle = body;
+      ctx.beginPath(); ctx.arc(x, y, R, 0, _TAU); ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,.88)"; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.arc(x, y, R - 0.2, 0, _TAU); ctx.stroke();
+      if (hov) {
+        ctx.strokeStyle = _rgba(hue, 0.55); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(x, y, R + 4, 0, _TAU); ctx.stroke();
+      }
     }
   }
-
   ctx.restore();
 }
 
+/* ---- node tag: the band's own values, beside the node ------------------- */
+function drawNodeTag(ctx, p, band, idx) {
+  if (!band) return;
+  var x = xOfF(band.freq), y = _clamp(yOfDb(nodeGainDb(band)), p.y, p.y + p.h);
+  var ty = TYPES[band.type];
+  var parts = [String(idx + 1), fmtFreq(band.freq)];
+  if (ty.gain) parts.push(fmtDb(band.gain + (band.dyn.on ? band.dyn.cur : 0)));
+  if (ty.q) parts.push("Q " + fmtQ(band.q));
+  if (ty.slope) parts.push(band.slope + " dB/oct");
+  if (!band.on) parts.push("OFF");
+  var txt = parts.join("   ");
+
+  ctx.save();
+  ctx.font = "500 10.5px " + _FONT;
+  var w = Math.ceil(ctx.measureText(txt).width) + 20, h = 22;
+  var bx = _clamp(x - w / 2, p.x + 2, p.x + p.w - w - 2);
+  var by = y - 22 - h;
+  if (by < p.y + 2) by = y + 20;
+  ctx.beginPath(); _rr(ctx, bx, by, w, h, 11);
+  ctx.fillStyle = "rgba(10,12,16,.92)"; ctx.fill();
+  ctx.strokeStyle = _rgba(bandHue(band, idx), 0.55); ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = "#DDE3EA"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+  ctx.fillText(txt, bx + 10, by + h / 2 + 0.5);
+  ctx.restore();
+}
 
 /* ---- hover guide -------------------------------------------------------- */
-function drawHoverGuide(ctx, p, mouseX, freq, db) {
-  ctx.save();
-  p = _shpRect(p);
-  if (p.w <= 0 || p.h <= 0 || typeof mouseX !== 'number' || !isFinite(mouseX) ||
-      mouseX < p.x - 2 || mouseX > p.x + p.w + 2) {
-    ctx.restore(); return;
-  }
-
-  var right = p.x + p.w;
-  var gx = Math.round(_shpClamp(mouseX, p.x, right)) + 0.5;
-
-  ctx.lineWidth = 1;
-  ctx.strokeStyle = 'rgba(255,255,255,.18)';
-  ctx.setLineDash([3, 4]);
-  ctx.beginPath();
-  ctx.moveTo(gx, p.y);
-  ctx.lineTo(gx, p.y + p.h);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  var label = _shpFmtHz(freq) + '   ' + _shpFmtDb(db);
-
-  ctx.font = _SHP_FONT;
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-
-  var padX = 7, boxH = 19;
-  var boxW = Math.round(ctx.measureText(label).width) + padX * 2;
-  var boxY = Math.round(p.y + 8) + 0.5;
-  var boxX = Math.round(gx + 10) + 0.5;
-
-  /* flip to the left of the cursor rather than run off the well */
-  if (boxX + boxW > right - 4) boxX = Math.round(gx - 10 - boxW) + 0.5;
-  boxX = Math.max(Math.round(p.x + 4) + 0.5, boxX);
-
-  ctx.beginPath();
-  _shpRoundRectPath(ctx, boxX, boxY, boxW, boxH, 4);
-  ctx.fillStyle = 'rgba(10,12,16,.92)';
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,.12)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  ctx.fillStyle = _SHP_ON_DARK;
-  ctx.fillText(label, boxX + padX, boxY + boxH / 2 + 0.5);
-
-  ctx.restore();
+var _NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+function _note(f) {
+  var n = Math.round(12 * Math.log2(f / 440) + 69);
+  return _NOTES[((n % 12) + 12) % 12] + (Math.floor(n / 12) - 1);
 }
-
-
-/* ---- POST spectrum: PRE multiplied by the computed response ------------
-   Not a second synthetic curve — the same bins, offset by the response the
-   EQ actually produces at that frequency, so it moves when a node moves. */
-function drawSpectrumPost(ctx, p) {
+function drawHoverGuide(ctx, p, mx, f, db) {
   ctx.save();
-  p = _shpRect(p);
-  if (p.w <= 0 || p.h <= 0 || typeof specDisp === 'undefined' ||
-      !specDisp || !specDisp.length) { ctx.restore(); return; }
-
-  ctx.beginPath();
-  ctx.rect(p.x, p.y, p.w, p.h);
-  ctx.clip();
-
-  var n = Math.min(NBINS, specDisp.length, binF.length);
-  var lo = p.y - 40, hi = p.y + p.h + 40;
-  var started = false;
-
-  ctx.beginPath();
-  for (var i = 0; i < n; i++) {
-    var f = binF[i];
-    if (f > _SHP_NYQ_DRAW) break;
-    var x = xOfF(f);
-    var y = _shpClamp(yOfLevel(specDisp[i] + respAtF(f)), lo, hi);
-    if (!started) { ctx.moveTo(x, y); started = true; } else { ctx.lineTo(x, y); }
-  }
-  if (started) {
-    ctx.lineWidth = 1.25;
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = 'rgba(155,123,240,.80)';
-    ctx.stroke();
-  }
+  var gx = Math.round(_clamp(mx, p.x, p.x + p.w)) + 0.5;
+  ctx.strokeStyle = "rgba(226,234,244,.16)"; ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
+  ctx.beginPath(); ctx.moveTo(gx, p.y); ctx.lineTo(gx, p.y + p.h); ctx.stroke();
+  ctx.setLineDash([]);
+  var txt = fmtFreq(f) + "  ·  " + _note(f) + "  ·  " + fmtDb(db);
+  ctx.font = "500 10.5px " + _FONT;
+  var w = Math.ceil(ctx.measureText(txt).width) + 20, h = 22;
+  var bx = gx + 10; if (bx + w > p.x + p.w - 4) bx = gx - 10 - w;
+  var by = p.y + 8;
+  ctx.beginPath(); _rr(ctx, bx, by, w, h, 11);
+  ctx.fillStyle = "rgba(10,12,16,.9)"; ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,.10)"; ctx.stroke();
+  ctx.fillStyle = "#C8D0DA"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+  ctx.fillText(txt, bx + 10, by + h / 2 + 0.5);
   ctx.restore();
 }

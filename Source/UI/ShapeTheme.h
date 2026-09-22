@@ -68,20 +68,20 @@ namespace shape::theme
         inline const juce::Colour bandCycle[] { cyan, violet, orange, cyan, green, violet };
 
         // --- display washes (alpha is part of the token) ---
-        inline const juce::Colour gridMajor     { juce::Colours::white.withAlpha (0.10f) };
-        inline const juce::Colour gridMinor     { juce::Colours::white.withAlpha (0.045f) };
-        inline const juce::Colour gridZero      { juce::Colours::white.withAlpha (0.16f) };
-        inline const juce::Colour spectrumFill  { juce::Colour (0xffc8d2de).withAlpha (0.16f) };
-        inline const juce::Colour spectrumLine  { juce::Colour (0xffd2dae4).withAlpha (0.45f) };
+        inline const juce::Colour gridMajor     { juce::Colour (0xffa8bcd6).withAlpha (0.085f) };
+        inline const juce::Colour gridMinor     { juce::Colour (0xffa8bcd6).withAlpha (0.04f) };
+        inline const juce::Colour gridZero      { juce::Colour (0xffe2eaf4).withAlpha (0.34f) };
+        inline const juce::Colour spectrumFill  { juce::Colour (0xffbac4d2).withAlpha (0.34f) };
+        inline const juce::Colour spectrumLine  { juce::Colour (0xffd6dde6).withAlpha (0.52f) };
         inline const juce::Colour spectrumPeak  { juce::Colours::white.withAlpha (0.14f) };
         inline const juce::Colour spectrumPost  { violet.withAlpha (0.80f) };
-        inline const juce::Colour dynamicRegion { violet.withAlpha (0.13f) };
+        inline const juce::Colour dynamicRegion { violet.withAlpha (0.16f) };
 
         // Curve rendering: a wide faint pass, a narrower brighter pass,
         // then the core stroke. Cheaper and cleaner than a shadow blur.
-        inline constexpr float curveFillAlpha  = 0.20f;
-        inline constexpr float curveGlowOuter  = 0.18f;
-        inline constexpr float curveGlowInner  = 0.30f;
+        inline constexpr float curveFillAlpha  = 0.16f;   // plus an inner glow against the line
+        inline constexpr float curveGlowOuter  = 0.14f;
+        inline constexpr float curveGlowInner  = 0.32f;
     }
 
     // =====================================================================
@@ -96,46 +96,50 @@ namespace shape::theme
         inline constexpr float spacingXL  = 24.0f;
         inline constexpr float spacingXXL = 32.0f;
 
-        inline constexpr float chassisRadius = 14.0f;
-        inline constexpr float wellRadius    = 10.0f;
-        inline constexpr float bezelWidth    =  3.0f;
+        inline constexpr float chassisRadius = 18.0f;
+        inline constexpr float wellRadius    = 12.0f;
+        inline constexpr float bezelWidth    =  4.0f;
         inline constexpr float panelRadius   = 10.0f;
         inline constexpr float controlRadius =  7.0f;
         inline constexpr float pillRadius    = 999.0f;
         inline constexpr float hairline      =  1.0f;
 
-        // --- the knob: a machined aluminium cylinder with an LED value arc ---
-        inline constexpr float knobBody       = 52.0f;
-        inline constexpr float knobBodyLarge  = 72.0f;
-        inline constexpr float knobArcRadius  = 27.0f;
-        inline constexpr float knobArcStroke  =  2.5f;
-        inline constexpr float knobTickRadius = 30.0f;
+        // --- the knob: a machined cap in a recessed collar; the LED value
+        //     arc runs in the collar, eleven ticks sit beyond it ---
+        inline constexpr float knobBodyBand   = 76.0f;   // FREQUENCY / GAIN / Q
+        inline constexpr float knobBodyDyn    = 58.0f;   // THRESHOLD ... RELEASE
+        inline constexpr float knobBodyIO     = 76.0f;   // INPUT / OUTPUT
+        inline constexpr float knobCollar     = 17.0f;   // collar diameter beyond the cap
+        inline constexpr float knobArcRadius  = 42.8f;   // band-size knob
+        inline constexpr float knobArcStroke  =  3.0f;
+        inline constexpr float knobTickInner  = 47.5f;
+        inline constexpr float knobTickOuter  = 52.0f;
         inline constexpr int   knobTickCount  = 11;
-        inline constexpr float knobIndicator  = 13.0f;   // length
+        inline constexpr float knobIndicator  = 30.0f;   // length: centre to near the rim
         inline constexpr float knobArcStart   = 135.0f;  // degrees
         inline constexpr float knobArcEnd     = 405.0f;
         inline constexpr float knobDragTravel = 190.0f;  // px for full range
         inline constexpr float knobFineScale  = 0.22f;   // shift-drag multiplier
 
         // --- EQ node ---
-        inline constexpr float nodeRadius    =  7.0f;
+        inline constexpr float nodeRadius    =  7.5f;   // filled jewel
         inline constexpr float nodeRing      =  2.5f;
         inline constexpr float nodeGlow      = 16.0f;
-        inline constexpr float nodeSelectRing = 12.0f;
+        inline constexpr float nodeSelectRing = 12.5f;  // hollow amber eye, radius 9
         inline constexpr float nodeHoverRing = 11.0f;
-        inline constexpr float nodeHitRadius = 18.0f;
+        inline constexpr float nodeHitRadius = 16.0f;
 
         // --- display padding, logical px. Top clears the floating toolbar;
         //     left and right leave room for the two rulers. ---
-        inline constexpr float wellPadLeft   = 46.0f;
-        inline constexpr float wellPadRight  = 46.0f;
-        inline constexpr float wellPadTop    = 52.0f;
-        inline constexpr float wellPadBottom = 26.0f;
+        inline constexpr float wellPadLeft   = 52.0f;
+        inline constexpr float wellPadRight  = 54.0f;
+        inline constexpr float wellPadTop    = 66.0f;
+        inline constexpr float wellPadBottom = 34.0f;
 
-        inline constexpr float curveStroke = 2.25f;
+        inline constexpr float curveStroke = 2.2f;
 
         inline constexpr int editorDefaultWidth  = 1400;
-        inline constexpr int editorDefaultHeight = 940;
+        inline constexpr int editorDefaultHeight = 955;
         inline constexpr int editorMinWidth      = 860;
         inline constexpr int editorMinHeight     = 660;
     }
@@ -191,22 +195,21 @@ namespace shape::theme
     // =====================================================================
     namespace scale
     {
-        inline constexpr double freqMin = 10.0;
-        inline constexpr double freqMax = 30000.0;
+        inline constexpr double freqMin = 15.0;       // display span
+        inline constexpr double freqMax = 28000.0;
+        inline constexpr double bandFreqMin = 20.0;   // where a band may sit
+        inline constexpr double bandFreqMax = 20000.0;
 
-        // Left ruler: EQ gain, fixed at +/-24 dB.
-        inline constexpr double gainRange = 24.0;
+        // Left ruler: the analyser, +/-24 dB, with 0 dB = -18 dBFS.
+        inline constexpr double analyzerRange = 24.0;
+        inline constexpr double analyzerRefDbfs = -18.0;
 
-        // Right ruler: a finer gain ruler on the same pixel rows, whose
-        // range the SCALE control picks. It is NOT a level meter — the
-        // ticks are derived from the setting so they never print numbers
-        // that disagree with the gridlines they sit on.
-        inline constexpr int fineScaleOptions[] = { 12, 6 };
-        inline constexpr int fineScaleDefault   = 12;
-
-        // Analyser magnitudes get their own mapping across the well.
-        inline constexpr double analyzerTopDb    =  26.0;
-        inline constexpr double analyzerBottomDb = -74.0;
+        // Right ruler: the EQ. SCALE picks its range, and the curve is
+        // plotted in its units; the +/-scale ticks sit at three quarters of
+        // the half-height, so the half-height spans scale * 4/3 dB.
+        inline constexpr int    eqScaleOptions[] = { 12, 6 };
+        inline constexpr int    eqScaleDefault   = 12;
+        inline constexpr double eqHalfPerScale   = 4.0 / 3.0;
 
         inline constexpr int maxBands = 24;
     }

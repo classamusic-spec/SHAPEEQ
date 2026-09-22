@@ -38,7 +38,7 @@
   --sh-body:52px;          /* knob body diameter                */
   --sh-box:70px;           /* dial field: body + arc + tick ring */
   --sh-ind-w:2px;
-  --sh-ind-h:13px;
+  --sh-ind-h:20px;
   --sh-ind-top:3px;
 
   width:96px;
@@ -51,12 +51,20 @@
   -webkit-tap-highlight-color:transparent;
 }
 
+.sh-knob--sm{
+  --sh-body:58px; --sh-box:86px;
+  --sh-ind-w:2.4px; --sh-ind-h:22px; --sh-ind-top:4px;
+  width:104px;
+}
+.sh-knob--xl{
+  --sh-body:76px; --sh-box:108px;
+  --sh-ind-w:2.8px; --sh-ind-h:30px; --sh-ind-top:5px;
+  width:124px;
+}
 .sh-knob--lg{
-  --sh-body:72px;
-  --sh-box:94px;
-  --sh-ind-w:2.5px;
-  --sh-ind-h:18px;
-  --sh-ind-top:4px;
+  --sh-body:76px; --sh-box:108px;
+  --sh-ind-w:3px; --sh-ind-h:30px; --sh-ind-top:5px;
+  width:124px;
 }
 
 .sh-knob--cyan  { --sh-accent:var(--cyan);   }
@@ -79,6 +87,19 @@
 }
 .sh-knob--active .sh-knob-dial{ cursor:grabbing; }
 
+/* the recessed collar around the cap, where the LED arc lives ---------------*/
+.sh-knob-dial::before{
+  content:""; position:absolute; left:50%; top:50%;
+  width:calc(var(--sh-body) + 17px); height:calc(var(--sh-body) + 17px);
+  margin:calc((var(--sh-body) + 17px) / -2) 0 0 calc((var(--sh-body) + 17px) / -2);
+  border-radius:50%;
+  background:radial-gradient(circle closest-side, #6E767F 0%, #8C939B 70%, #A7ADB4 88%, #D4D8DC 100%);
+  box-shadow:
+    inset 0 2px 3px rgba(0,0,0,.45),
+    inset 0 -1px 1px rgba(255,255,255,.35),
+    0 1px 0 rgba(255,255,255,.75);
+}
+
 /* ticks + value arc --------------------------------------------------------*/
 .sh-knob-svg{
   position:absolute;
@@ -88,7 +109,7 @@
   display:block;
 }
 .sh-knob-ticks line{
-  stroke:rgba(0,0,0,.28);
+  stroke:rgba(30,36,44,.42);
   stroke-linecap:butt;
 }
 .sh-knob-arc,
@@ -98,8 +119,9 @@
   stroke:var(--sh-accent);
   stroke-linecap:round;
 }
-.sh-knob-arc-bloom{ opacity:.42; }
-.sh-knob-arc-glow { opacity:.13; }
+.sh-knob-arc-bloom{ opacity:.75; }
+.sh-knob-arc-glow { opacity:.22; }
+.sh-knob-svg{ z-index:1; }
 
 /* accent light bouncing off the chassis around the base --------------------*/
 .sh-knob-halo{
@@ -108,11 +130,12 @@
   border-radius:50%;
   pointer-events:none;
   background:radial-gradient(circle closest-side, var(--sh-accent) 58%, rgba(0,0,0,0) 76%);
-  opacity:.06;
-  filter:blur(7px);
+  opacity:.07;
+  filter:blur(8px);
 }
+.sh-knob--lg .sh-knob-halo{ opacity:.16; }
 .sh-knob-dial:hover .sh-knob-halo,
-.sh-knob--active .sh-knob-halo{ opacity:.12; }
+.sh-knob--active .sh-knob-halo{ opacity:.2; }
 
 /* the machined body --------------------------------------------------------*/
 .sh-knob-body{
@@ -123,22 +146,23 @@
   margin:calc(var(--sh-body) / -2) 0 0 calc(var(--sh-body) / -2);
   border-radius:50%;
   isolation:isolate;
+  z-index:2;
   /* top layer: the concentric chamfer the lathe leaves; under it, the dome */
   background:
     radial-gradient(circle closest-side,
       rgba(0,0,0,0) 76%,
       rgba(54,62,72,.20) 92%,
       rgba(255,255,255,.34) 100%),
-    radial-gradient(circle at 38% 30%,
-      #FCFCFD 0%,
-      #E4E7EA 30%,
-      #BFC5CB 62%,
-      #9AA1A9 88%,
-      #C3C9CF 100%);
+    radial-gradient(circle at 42% 34%,
+      #FFFFFF 0%,
+      #ECEEF0 26%,
+      #CDD2D7 58%,
+      #A9B0B7 86%,
+      #C9CED3 100%);
   box-shadow:
-      0 0 0 1px rgba(0,0,0,.30),
-      0 2px 5px rgba(0,0,0,.30),
-      0 6px 12px rgba(0,0,0,.10),
+      0 0 0 1px rgba(40,46,54,.45),
+      0 3px 6px rgba(0,0,0,.35),
+      0 8px 14px rgba(0,0,0,.16),
       inset 0 1px 1px rgba(255,255,255,.85),
       inset 0 -2px 3px rgba(0,0,0,.16),
       inset 0 0 9px rgba(84,93,105,.26);   /* pulls the dome flat, as a machined face is */
@@ -189,18 +213,20 @@
   inset:0;
   z-index:3;
   border-radius:50%;
-  background:conic-gradient(from 196deg,
-      rgba(255,255,255,0)   0deg,
-      rgba(255,255,255,.62) 40deg,
-      rgba(255,255,255,0)   94deg,
-      rgba(0,0,0,.26)       168deg,
-      rgba(255,255,255,0)   238deg,
-      rgba(255,255,255,.20) 302deg,
-      rgba(255,255,255,0)   344deg);
-  -webkit-mask:radial-gradient(circle closest-side,
-      rgba(0,0,0,0) 0 78%, #000 90%, #000 100%);
-  mask:radial-gradient(circle closest-side,
-      rgba(0,0,0,0) 0 78%, #000 90%, #000 100%);
+  /* the anisotropic sheen of a concentrically brushed cap: two bright
+     wedges facing the light, two dark ones across from them            */
+  background:conic-gradient(from 0deg,
+      rgba(255,255,255,.00)   0deg,
+      rgba(255,255,255,.55)  32deg,
+      rgba(255,255,255,.00)  70deg,
+      rgba(40,48,58,.22)    120deg,
+      rgba(255,255,255,.00) 165deg,
+      rgba(255,255,255,.40) 212deg,
+      rgba(255,255,255,.00) 250deg,
+      rgba(40,48,58,.26)    300deg,
+      rgba(255,255,255,.00) 360deg);
+  -webkit-mask:radial-gradient(circle closest-side, rgba(0,0,0,.35) 0 18%, #000 60%, #000 100%);
+  mask:radial-gradient(circle closest-side, rgba(0,0,0,.35) 0 18%, #000 60%, #000 100%);
 }
 
 /* indicator ---------------------------------------------------------------*/
@@ -219,24 +245,24 @@
   height:var(--sh-ind-h);
   margin-left:calc(var(--sh-ind-w) / -2);
   border-radius:calc(var(--sh-ind-w) / 2);
-  background:#2A2F36;
-  box-shadow:.5px .5px 0 rgba(255,255,255,.45);
+  background:linear-gradient(180deg,#1C2026,#3A4048);
+  box-shadow:.6px .6px 0 rgba(255,255,255,.55);
 }
 
 /* label + readout ---------------------------------------------------------*/
 .sh-knob-label{
-  margin-top:9px;
-  font-size:9.5px;
+  margin-top:4px;
+  font-size:10.5px;
   font-weight:500;
-  letter-spacing:.14em;
+  letter-spacing:.16em;
   text-transform:uppercase;
   color:var(--ink2);
   white-space:nowrap;
   text-align:center;
 }
 .sh-knob-value{
-  margin-top:3px;
-  font-size:13.5px;
+  margin-top:4px;
+  font-size:14px;
   font-weight:500;
   color:var(--ink);
   font-variant-numeric:tabular-nums;
@@ -246,16 +272,17 @@
 
 /* large variant: a three-stop scale instead of the label / readout stack ---*/
 .sh-knob-scale{
-  margin-top:8px;
-  width:calc(var(--sh-body) + 6px);
+  margin-top:-2px;
+  width:calc(var(--sh-box) + 14px);
   display:flex;
   justify-content:space-between;
-  font-size:9px;
-  font-weight:500;
-  letter-spacing:.04em;
-  color:var(--ink2);
+  font-size:11.5px;
+  font-weight:400;
+  letter-spacing:.02em;
+  color:#3A4148;
   font-variant-numeric:tabular-nums;
 }
+.sh-knob-scale span:nth-child(2){ margin-top:8px; }
 .sh-knob-scale span{ line-height:1; }
 .sh-knob-scale span:nth-child(2){ transform:translateX(.5px); }
 
@@ -271,32 +298,37 @@
    -------------------------------------------------------------------------- */
 
 .sh-shapes{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  padding:5px;
-  border-radius:10px;
-  background:linear-gradient(180deg,#F3F5F7,#E7EAEE);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.85), 0 0 0 1px rgba(0,0,0,.07);
+  display:flex;
+  align-items:stretch;
+  width:100%;
+  height:38px;
+  padding:0;
+  border-radius:9px;
+  background:linear-gradient(180deg,#F2F4F6,#E0E3E7);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95), 0 0 0 1px rgba(0,0,0,.13), 0 1px 2px rgba(0,0,0,.08);
 }
 .sh-shape-btn{
-  width:34px;
-  height:34px;
+  position:relative;
+  flex:1 1 0;
+  height:auto;
   padding:0;
-  display:inline-flex;
+  display:flex;
   align-items:center;
   justify-content:center;
-  border-radius:7px;
-  border:1px solid rgba(0,0,0,.14);
-  background:var(--sh-light-face);
-  color:var(--ink2);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.75), 0 1px 1px rgba(0,0,0,.07);
+  border:0;
+  border-radius:9px;
+  background:transparent;
+  color:#4A525C;
   cursor:pointer;
   outline:none;
   -webkit-appearance:none;
   appearance:none;
 }
-.sh-shape-btn svg{ display:block; width:22px; height:16px; }
+.sh-shape-btn + .sh-shape-btn::before{
+  content:""; position:absolute; left:0; top:7px; bottom:7px; width:1px;
+  background:rgba(0,0,0,.12); box-shadow:1px 0 0 rgba(255,255,255,.7);
+}
+.sh-shape-btn svg{ display:block; width:24px; height:17px; }
 .sh-shape-btn svg path{
   fill:none;
   stroke:currentColor;
@@ -305,14 +337,15 @@
   stroke-linejoin:round;
   vector-effect:non-scaling-stroke;
 }
-.sh-shape-btn:hover{ background:linear-gradient(180deg,#EDEFF2,#DCE1E6); }
+.sh-shape-btn:hover{ color:#1F242A; background:rgba(255,255,255,.4); }
 .sh-shape-btn:focus-visible{ box-shadow:0 0 0 2px rgba(69,194,240,.75); }
 .sh-shape-btn.sh-on{
-  background:var(--sh-dark-face);
-  border-color:rgba(0,0,0,.55);
-  color:var(--amber);
-  box-shadow:var(--sh-amber-ring), inset 0 1px 0 rgba(255,255,255,.09);
+  z-index:1;
+  color:#E57A0E;
+  background:linear-gradient(180deg,#FFE7C8,#F9CF9C);
+  box-shadow: inset 0 0 0 1px rgba(255,158,44,.95), 0 0 12px rgba(255,150,40,.55), inset 0 1px 0 rgba(255,255,255,.7);
 }
+.sh-shape-btn.sh-on::before, .sh-shape-btn.sh-on + .sh-shape-btn::before{ opacity:0; }
 
 /* --------------------------------------------------------------------------
    2B. Amber pill toggle
@@ -320,7 +353,7 @@
 
 .sh-pill{
   height:30px;
-  padding:0 16px;
+  padding:0 18px 0 14px;
   display:inline-flex;
   align-items:center;
   gap:8px;
@@ -351,14 +384,15 @@
 .sh-pill:hover{ background:linear-gradient(180deg,#EDEFF2,#DCE1E6); }
 .sh-pill:focus-visible{ box-shadow:0 0 0 2px rgba(69,194,240,.75); }
 .sh-pill.sh-on{
-  background:var(--sh-dark-face);
-  border-color:rgba(0,0,0,.55);
-  color:var(--amber);
-  box-shadow:var(--sh-amber-ring), inset 0 1px 0 rgba(255,255,255,.09);
+  background:linear-gradient(180deg,#3B2C1F,#221810);
+  border-color:rgba(255,158,44,.9);
+  color:#FFD2A0;
+  box-shadow: 0 0 0 1px rgba(255,158,44,.35), 0 0 14px rgba(255,140,30,.5), inset 0 1px 0 rgba(255,255,255,.08), inset 0 0 10px rgba(255,140,30,.15);
+  text-shadow:0 0 8px rgba(255,150,40,.5);
 }
 .sh-pill.sh-on .sh-pill-dot{
-  background:var(--amber);
-  box-shadow:0 0 6px var(--amber);
+  background:radial-gradient(circle at 35% 30%,#FFE2BC,#FF9E2C 60%);
+  box-shadow:0 0 6px var(--amber), 0 0 12px rgba(255,158,44,.6);
 }
 
 /* --------------------------------------------------------------------------
@@ -368,22 +402,25 @@
 .sh-seg{
   display:inline-flex;
   align-items:center;
-  gap:4px;
+  gap:5px;
+  flex-wrap:wrap;
+  justify-content:center;
 }
 .sh-seg-btn{
-  height:32px;
-  padding:0 18px;
+  height:36px;
+  min-width:82px;
+  padding:0 16px;
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  border-radius:7px;
-  border:1px solid rgba(0,0,0,.14);
-  background:var(--sh-light-face);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.75), 0 1px 1px rgba(0,0,0,.07);
+  border-radius:999px;
+  border:1px solid rgba(0,0,0,.15);
+  background:linear-gradient(180deg,#F4F6F7,#DADEE2);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95), 0 1px 2px rgba(0,0,0,.14);
   font-family:var(--sh-sans);
-  font-size:10px;
+  font-size:10.5px;
   font-weight:500;
-  letter-spacing:.12em;
+  letter-spacing:.1em;
   text-transform:uppercase;
   color:var(--ink2);
   white-space:nowrap;
@@ -392,13 +429,14 @@
   -webkit-appearance:none;
   appearance:none;
 }
-.sh-seg-btn:hover{ background:linear-gradient(180deg,#EDEFF2,#DCE1E6); }
+.sh-seg-btn:hover{ color:#1F242A; }
 .sh-seg-btn:focus-visible{ box-shadow:0 0 0 2px rgba(69,194,240,.75); }
 .sh-seg-btn.sh-on{
-  background:var(--sh-dark-face);
-  border-color:rgba(0,0,0,.55);
-  color:var(--amber);
-  box-shadow:var(--sh-amber-ring), inset 0 1px 0 rgba(255,255,255,.09);
+  background:linear-gradient(180deg,#3B2C1F,#221810);
+  border-color:rgba(255,158,44,.9);
+  color:#FFB25C;
+  box-shadow: 0 0 0 1px rgba(255,158,44,.35), 0 0 14px rgba(255,140,30,.5), inset 0 1px 0 rgba(255,255,255,.08), inset 0 0 10px rgba(255,140,30,.15);
+  text-shadow:0 0 8px rgba(255,150,40,.5);
 }
 
 @media (prefers-reduced-motion: no-preference){
@@ -419,9 +457,13 @@
   var FINE = 0.22;
   var uid = 0;
 
+  /* body = the machined cap; the LED arc runs in the recessed collar just
+     outside it; the tick ring sits beyond that. Sized from the reference. */
   var SIZES = {
-    md:{ body:52, box:70, rArc:28.2, tickIn:31.0, tickOut:34.0, arcW:2.5, tickW:1 },
-    lg:{ body:72, box:94, rArc:38.6, tickIn:42.0, tickOut:45.6, arcW:3.2, tickW:1 }
+    md:{ body:52, box:74,  rArc:30.0, tickIn:33.5, tickOut:36.5, arcW:2.5, tickW:1.1 },
+    sm:{ body:58, box:86,  rArc:33.4, tickIn:37.5, tickOut:41.5, arcW:2.6, tickW:1.2 },
+    xl:{ body:76, box:108, rArc:42.8, tickIn:47.5, tickOut:52.0, arcW:3.0, tickW:1.3 },
+    lg:{ body:76, box:108, rArc:42.8, tickIn:47.5, tickOut:52.0, arcW:3.2, tickW:1.3 }
   };
 
   var clamp = function(v,a,b){ return v < a ? a : v > b ? b : v; };
@@ -453,7 +495,7 @@
     this.curve    = opts.curve || "lin";
     this.bipolar  = !!opts.bipolar;
     this.accent   = (opts.accent === "amber" || opts.accent === "violet") ? opts.accent : "cyan";
-    this.size     = opts.size === "lg" ? "lg" : "md";
+    this.size     = SIZES[opts.size] ? opts.size : "md";
     this.onChange = typeof opts.onChange === "function" ? opts.onChange : null;
     this.format   = typeof opts.format === "function" ? opts.format : null;
 
@@ -461,7 +503,9 @@
 
     var P = this.P = SIZES[this.size];
     this._value = clamp(opts.value != null ? +opts.value : this.min, this.min, this.max);
-    this._initial = this._value;
+    /* double-click returns to the parameter's default, not wherever the
+       knob happened to be when it was built                             */
+    this._initial = clamp(opts.def != null ? +opts.def : this._value, this.min, this.max);
 
     /* ---- DOM ---- */
     var el = this.el = document.createElement("div");
@@ -471,7 +515,7 @@
     var c = P.box / 2;
 
     var ticks = "";
-    for (var i = 0; i < 11; i++){
+    for (var i = 0; i < 11; i++){   /* eleven ticks, as on the reference */
       var a = ARC_START + ARC_SWEEP * (i / 10);
       var p0 = polar(c, P.tickIn, a), p1 = polar(c, P.tickOut, a);
       ticks += '<line x1="' + p0[0].toFixed(2) + '" y1="' + p0[1].toFixed(2) +
@@ -700,7 +744,7 @@
     lowshelf : "M1.5 4.6H5.4C8.4 4.6 8.4 11.4 11.4 11.4H20.5",
     bell     : "M1.5 11.6H5.6C8.3 11.6 8.1 4.2 10.9 4.2C13.7 4.2 13.5 11.6 16.2 11.6H20.5",
     highshelf: "M1.5 11.4H10.6C13.6 11.4 13.6 4.6 16.6 4.6H20.5",
-    cut      : "M1.5 14.2H7.6L11.6 3.8H20.5"
+    cut      : "M1.5 14.4C5.4 14.4 6.6 4.6 11.2 4.6H20.5"
   };
   var GLYPH_ORDER = ["lowshelf", "bell", "highshelf", "cut"];
   var GLYPH_TITLE = { lowshelf:"Low shelf", bell:"Bell", highshelf:"High shelf", cut:"Cut" };

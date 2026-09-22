@@ -2,7 +2,8 @@
 
 The executable specification is `design/prototype/shape-ui.html`. Token
 values are mirrored in `Source/UI/ShapeTheme.h`. The visual target is
-`design/reference/SHAPE_REFERENCE_V2.webp`.
+`design/reference/SHAPE_REFERENCE_V3.webp`. The EQ is verified by
+`design/prototype/tests/eq-audit.js` (1,000 checks).
 
 ---
 
@@ -36,34 +37,30 @@ that input is computed, not staged.
 
 ## 3. The curve is computed, never drawn
 
-The product spec is unambiguous: *"the canvas is part of the metrology of
-the product. It must not lie to the user."*
+Each band is described as a cascade of analogue prototype sections; the
+PHASE mode decides how they are realised, and the display evaluates
+`20·log₁₀|H|` of exactly that realisation at every pixel column.
 
-For every band the prototype designs real RBJ-cookbook biquad sections,
-cascades them, and evaluates
+- **ZERO** — RBJ biquads via the bilinear transform. Exact at the band
+  centre, cramped toward Nyquist.
+- **NATURAL** — magnitude-matched biquads: impulse-invariant poles, the
+  numerator solved to match the analogue magnitude at DC, Nyquist and the
+  centre. Still minimum phase, still zero latency, without the cramping
+  (3.9 dB → 0.7 dB worst case for a 15 kHz bell at 44.1 kHz).
+- **LINEAR** — the analogue target magnitude, which is what a linear-phase
+  FIR designed from it reproduces. The PHASE caption shows its latency.
 
-```
-H_total(f) = H₁(f) · H₂(f) · … · Hₙ(f)
-20·log₁₀|H(e^jω)|   at every pixel column
-```
+Cuts are Butterworth cascades, −3.01 dB at the corner at every slope. The
+POST spectrum is the PRE spectrum through the same response. None of this
+is asserted here — `tests/eq-audit.js` measures it.
 
-What falls out of doing it properly rather than approximating:
+**Two rulers.** Left is the analyser (±24 dB, 0 = −18 dBFS, the usual
+0 VU alignment). Right is the EQ; SCALE sets its range, and its ±scale
+ticks sit at three quarters of the half-height, which is where the
+reference puts them and where band 3's −4.8 dB reads −4.8.
 
-- Cut filters cascade genuine Butterworth sections — a first-order
-  bilinear-transformed section for odd orders, biquads at the correct
-  section Q for the rest. 6 through 96 dB/oct all behave correctly,
-  including the asymmetry of the odd slopes.
-- Tilt shelf is a low shelf at −G cascaded with a high shelf at +G, so it
-  pivots where it should.
-- The response flattens at Nyquist instead of mirroring, and the region
-  above it is shaded rather than quietly drawn as if it meant something.
-- The POST spectrum is the PRE spectrum multiplied by that same computed
-  response. Drag a node and it moves, because it is the same number.
-
-Verified against the rendered output: the 512 Hz band's node lands on the
-500 Hz gridline, the 36 Hz low cut's at ~37 Hz.
-
----
+**Nodes** sit on the composite curve, as the reference draws them.
+Dragging is relative, so a node propped up by a neighbour never jumps.
 
 ## 4. Colour
 
@@ -117,9 +114,10 @@ for precision, not for primary editing.
 | double-click empty display | create a band there, at that frequency and gain |
 | drag node | frequency (x) and gain (y) together |
 | shift-drag | fine, at 22% of normal travel |
-| scroll over node | Q |
+| scroll over node | Q · on a cut, steps the slope |
 | click node | select; the band strip becomes that band |
-| alt-click node | bypass the band (ring drops to 35%, glow goes) |
+| alt-click or double-click node | bypass the band (dashed hollow node) |
+| `S` | solo the selected band — its region lit, the rest dimmed |
 | right-click node, or `delete` | remove the band |
 | `[` / `]` | previous / next band |
 | ⌘Z / ⌘⇧Z | undo / redo |
@@ -161,17 +159,18 @@ strokes, so it tints the ground without veiling the curve.
 
 ## 8. The two rulers
 
-The left ruler is EQ gain, fixed at ±24 dB. The right is a finer gain
-ruler on the same pixel rows, whose range the SCALE control picks.
+Left is the **analyser**, ±24 dB, where 0 dB = −18 dBFS (the usual 0 VU
+alignment). Horizontal gridlines follow it.
 
-It is not a level meter, and its ticks are **derived** from the SCALE
-setting rather than hard-coded — at 12 dB it reads +12/+6/0/−6/−12, at
-6 dB it reads +6/+3/0/−3/−6 on the same rows. A fixed tick list would have
-printed numbers that disagreed with the gridlines they sat on at any
-setting but the default.
+Right is the **EQ**. The curve and nodes are plotted on it, and SCALE sets
+its range: at 12 dB it reads +12/+6/0/−6/−12, at 6 dB +6/+3/0/−3/−6, and
+the curve zooms to match. Its ±scale ticks sit at three quarters of the
+half-height, with a thin rail marking the range — exactly where the
+reference puts them, and where a −4.8 dB band reads −4.8.
 
-The analyser has its own mapping across the well and is deliberately not
-given an axis, because it is a relative display.
+This is the reverse of the previous pass, which had the EQ on the left and
+SCALE only relabelling the right. The reference settles it: band 3's
+readout of −4.8 dB matches the right-hand ruler, not the left.
 
 ---
 
@@ -179,8 +178,8 @@ given an axis, because it is a relative display.
 
 Controls that do nothing are not offered.
 
-- Gain dims for filter types that have none; Q dims for cut filters, whose
-  cascade is Butterworth and whose Q is not the user's to set.
+- Gain dims for filter types that have none. On a cut, whose cascade is
+  Butterworth, the Q knob becomes **SLOPE** (6–96 dB/oct) in the same place.
 - The four dynamics knobs dim until the band is actually dynamic.
 - The EQ / DYNAMIC / SPECTRAL tabs change *emphasis* rather than pretending
   to be pages: SPECTRAL pushes the curve back so the analyser reads.
@@ -190,7 +189,7 @@ Controls that do nothing are not offered.
 
 ## 10. How this is built
 
-The prototype is assembled from parts, not hand-edited as one 109 KB file:
+The prototype is assembled from parts, not hand-edited as one 130 KB file:
 
 ```
 design/prototype/
@@ -208,11 +207,16 @@ design/prototype/
 
 `build.js` splits each part into its CSS, JS and markup, emits all CSS
 first, the markup in layout order, and all JS last — so nothing runs before
-the DOM it binds to exists. It ends with an integration-override block that
-reconciles parts authored independently; the notable one repairs a cascade
-collision where the chassis's `.sh-chassis button` reset (0,1,1) outranked
-the other parts' single-class button rules (0,1,0) and stripped their
-padding, border, background and colour.
+the DOM it binds to exists.
+
+The chassis's button reset is written as `:where(.sh-chassis) button`,
+which has zero specificity, so every component's own rules win without
+help. (An earlier pass wrote it as `.sh-chassis button` — specificity
+0,1,1 — which silently stripped padding, border, background and colour
+from every other part's buttons and needed an override block to repair.)
+
+`tests/eq-audit.js` loads `parts/engine.js` directly; run it after any
+change to the filter code.
 
 ---
 

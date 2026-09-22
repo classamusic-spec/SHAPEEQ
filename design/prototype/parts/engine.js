@@ -1,20 +1,37 @@
 /* ==================================================================
    SHAPE — engine
    Filter design, state, analyser model, interaction and the frame loop.
-   Drawing lives in canvas.js; controls in knobs.html.
+   Drawing lives in canvas.js; controls in knobs.html; binding in wiring.js.
 
-   The response curve is computed, never drawn: real RBJ-cookbook biquad
-   sections, cascaded per band, evaluated as 20*log10|H(e^jw)| at every
-   pixel column.
+   The response curve is computed, never drawn. Each band is described as
+   a cascade of analogue prototype sections, and the PHASE mode decides how
+   those sections are realised:
+
+     ZERO     RBJ-cookbook biquads via the bilinear transform — the classic
+              minimum-phase EQ. Exact at the band centre, but its response
+              is compressed ("cramped") toward Nyquist.
+     NATURAL  magnitude-matched biquads: impulse-invariant poles with the
+              numerator solved to hit the analogue magnitude exactly at DC,
+              at Nyquist and at the band centre. Still minimum phase and
+              zero latency, but without the cramping.
+     LINEAR   the analogue target magnitude itself — what a linear-phase
+              FIR designed from that target reproduces, up to Nyquist.
+
+   In every mode the display evaluates 20*log10|H| of exactly the thing
+   that mode would run, at every pixel column.
    ================================================================== */
 "use strict";
 
-var FS = 48000;
+var FS = 96000;
 var NYQ = FS / 2;
-var FMIN = 10, FMAX = 30000;
+var FMIN = 15, FMAX = 28000;           /* display span, matching the reference */
+var BAND_FMIN = 20, BAND_FMAX = 20000;  /* where a band's centre may sit        */
 var LOG_MIN = Math.log(FMIN), LOG_SPAN = Math.log(FMAX) - LOG_MIN;
-var GAIN_RANGE = 24;          /* left axis, ±24 dB — as the reference draws it */
 
+var ANA_RANGE = 24;   /* left ruler: analyser, +/-24 dB                      */
+var ANA_REF = -18;    /* analyser 0 dB = -18 dBFS, the usual 0 VU alignment  */
+
+function setSampleRate(sr) { FS = sr; NYQ = sr / 2; }
 function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 function fToNorm(f) { return (Math.log(clamp(f, FMIN, FMAX)) - LOG_MIN) / LOG_SPAN; }
 function normToF(t) { return Math.exp(LOG_MIN + t * LOG_SPAN); }
@@ -30,90 +47,189 @@ var TYPES = {
   notch:     { label: "Notch",      gain: false, q: true,  slope: false },
   bandpass:  { label: "Band Pass",  gain: false, q: true,  slope: false }
 };
+var SLOPES = [6, 12, 18, 24, 36, 48, 72, 96];
+/* types drawn by the line alone: the tonal fill sits on top of these */
+var BASELINE_TYPES = { lowcut: 1, highcut: 1, notch: 1, bandpass: 1 };
 
-/* ---------- biquad design (RBJ Audio EQ Cookbook) -------------- */
+/* Q of each 2nd-order section of an order-n Butterworth cascade.
+   Even n: poles at (2k-1)pi/2n. Odd n: a real pole plus pairs at k*pi/n —
+   using the even formula for odd orders overdamps the 18 dB/oct cut
+   (-7.8 dB at the corner instead of -3.0), which the audit caught.   */
 function butterworthQs(order) {
-  var qs = [];
-  for (var k = 0; k < Math.floor(order / 2); k++) {
-    qs.push(1 / (2 * Math.cos(((2 * k + 1) * Math.PI) / (2 * order))));
+  var qs = [], k;
+  if (order % 2 === 0) {
+    for (k = 1; k <= order / 2; k++) qs.push(1 / (2 * Math.cos((2 * k - 1) * Math.PI / (2 * order))));
+  } else {
+    for (k = 1; k <= (order - 1) / 2; k++) qs.push(1 / (2 * Math.cos(k * Math.PI / order)));
   }
   return qs;
 }
-function sec(b0, b1, b2, a0, a1, a2) {
-  return { b0: b0 / a0, b1: b1 / a0, b2: b2 / a0, a1: a1 / a0, a2: a2 / a0 };
-}
-function peaking(f0, g, Q) {
-  var A = Math.pow(10, g / 40);
-  var w = 2 * Math.PI * f0 / FS, cw = Math.cos(w), al = Math.sin(w) / (2 * Q);
-  return sec(1 + al * A, -2 * cw, 1 - al * A, 1 + al / A, -2 * cw, 1 - al / A);
-}
-function lowShelf(f0, g, Q) {
-  var A = Math.pow(10, g / 40), sA = Math.sqrt(A);
-  var w = 2 * Math.PI * f0 / FS, cw = Math.cos(w), al = Math.sin(w) / (2 * Q), t = 2 * sA * al;
-  return sec(A * ((A + 1) - (A - 1) * cw + t),
-             2 * A * ((A - 1) - (A + 1) * cw),
-             A * ((A + 1) - (A - 1) * cw - t),
-             (A + 1) + (A - 1) * cw + t,
-             -2 * ((A - 1) + (A + 1) * cw),
-             (A + 1) + (A - 1) * cw - t);
-}
-function highShelf(f0, g, Q) {
-  var A = Math.pow(10, g / 40), sA = Math.sqrt(A);
-  var w = 2 * Math.PI * f0 / FS, cw = Math.cos(w), al = Math.sin(w) / (2 * Q), t = 2 * sA * al;
-  return sec(A * ((A + 1) + (A - 1) * cw + t),
-             -2 * A * ((A - 1) + (A + 1) * cw),
-             A * ((A + 1) + (A - 1) * cw - t),
-             (A + 1) - (A - 1) * cw + t,
-             2 * ((A - 1) - (A + 1) * cw),
-             (A + 1) - (A - 1) * cw - t);
-}
-function highPass2(f0, Q) {
-  var w = 2 * Math.PI * f0 / FS, cw = Math.cos(w), al = Math.sin(w) / (2 * Q);
-  return sec((1 + cw) / 2, -(1 + cw), (1 + cw) / 2, 1 + al, -2 * cw, 1 - al);
-}
-function lowPass2(f0, Q) {
-  var w = 2 * Math.PI * f0 / FS, cw = Math.cos(w), al = Math.sin(w) / (2 * Q);
-  return sec((1 - cw) / 2, 1 - cw, (1 - cw) / 2, 1 + al, -2 * cw, 1 - al);
-}
-function highPass1(f0) {
-  var K = Math.tan(Math.PI * f0 / FS), n = 1 / (1 + K);
-  return { b0: n, b1: -n, b2: 0, a1: (K - 1) * n, a2: 0 };
-}
-function lowPass1(f0) {
-  var K = Math.tan(Math.PI * f0 / FS), n = 1 / (1 + K);
-  return { b0: K * n, b1: K * n, b2: 0, a1: (K - 1) * n, a2: 0 };
-}
-function notchSec(f0, Q) {
-  var w = 2 * Math.PI * f0 / FS, cw = Math.cos(w), al = Math.sin(w) / (2 * Q);
-  return sec(1, -2 * cw, 1, 1 + al, -2 * cw, 1 - al);
-}
-function bandPassSec(f0, Q) {
-  var w = 2 * Math.PI * f0 / FS, cw = Math.cos(w), al = Math.sin(w) / (2 * Q);
-  return sec(al, 0, -al, 1 + al, -2 * cw, 1 - al);
-}
 
-function designBand(band, gainDb) {
-  var f0 = clamp(band.freq, FMIN, NYQ * 0.995);
+/* ---------- band -> analogue prototype sections ------------------
+   Every section is { k, f, g, q }: kind, centre Hz, gain dB, Q.       */
+function bandSections(band, gainDb) {
+  var f0 = clamp(band.freq, BAND_FMIN, Math.min(BAND_FMAX, NYQ * 0.98));
   var Q = clamp(band.q, 0.1, 100);
   switch (band.type) {
-    case "bell":      return [peaking(f0, gainDb, Q)];
-    case "lowshelf":  return [lowShelf(f0, gainDb, Q)];
-    case "highshelf": return [highShelf(f0, gainDb, Q)];
-    case "tilt":      return [lowShelf(f0, -gainDb, Q), highShelf(f0, gainDb, Q)];
-    case "notch":     return [notchSec(f0, Q)];
-    case "bandpass":  return [bandPassSec(f0, Q)];
+    case "bell":      return [{ k: "peak", f: f0, g: gainDb, q: Q }];
+    case "lowshelf":  return [{ k: "ls",   f: f0, g: gainDb, q: Q }];
+    case "highshelf": return [{ k: "hs",   f: f0, g: gainDb, q: Q }];
+    case "tilt":      return [{ k: "ls", f: f0, g: -gainDb, q: Q }, { k: "hs", f: f0, g: gainDb, q: Q }];
+    case "notch":     return [{ k: "notch", f: f0, g: 0, q: Q }];
+    case "bandpass":  return [{ k: "bp",    f: f0, g: 0, q: Q }];
     case "lowcut":
     case "highcut": {
+      var hp = band.type === "lowcut";
       var order = Math.max(1, Math.round(band.slope / 6));
-      var out = [], qs = butterworthQs(order), i;
-      if (order % 2 === 1) out.push(band.type === "lowcut" ? highPass1(f0) : lowPass1(f0));
-      for (i = 0; i < qs.length; i++) {
-        out.push(band.type === "lowcut" ? highPass2(f0, qs[i]) : lowPass2(f0, qs[i]));
-      }
+      var out = [], qs = butterworthQs(order);
+      if (order % 2 === 1) out.push({ k: hp ? "hp1" : "lp1", f: f0, g: 0, q: 0.5 });
+      for (var i = 0; i < qs.length; i++) out.push({ k: hp ? "hp2" : "lp2", f: f0, g: 0, q: qs[i] });
       return out;
     }
     default: return [];
   }
+}
+
+/* ---------- analogue magnitude, |H(jx)|^2 with x = f / f0 ------- */
+function analogMag2(s, x) {
+  var A, sA, x2 = x * x, u = 1 - x2, q2 = s.q * s.q;
+  switch (s.k) {
+    case "peak":
+      A = Math.pow(10, s.g / 40);
+      return (u * u + (A * x / s.q) * (A * x / s.q)) / (u * u + (x / (A * s.q)) * (x / (A * s.q)));
+    case "ls":
+      A = Math.pow(10, s.g / 40); sA = Math.sqrt(A);
+      return A * A * ((A - x2) * (A - x2) + A * x2 / q2) / ((1 - A * x2) * (1 - A * x2) + A * x2 / q2);
+    case "hs":
+      A = Math.pow(10, s.g / 40); sA = Math.sqrt(A);
+      return A * A * ((1 - A * x2) * (1 - A * x2) + A * x2 / q2) / ((A - x2) * (A - x2) + A * x2 / q2);
+    case "hp2":   return (x2 * x2) / (u * u + x2 / q2);
+    case "lp2":   return 1 / (u * u + x2 / q2);
+    case "hp1":   return x2 / (1 + x2);
+    case "lp1":   return 1 / (1 + x2);
+    case "notch": return (u * u) / (u * u + x2 / q2);
+    case "bp":    return (x2 / q2) / (u * u + x2 / q2);
+  }
+  return 1;
+}
+
+/* ---------- ZERO: RBJ bilinear realisation ----------------------- */
+function norm(b0, b1, b2, a0, a1, a2) {
+  return { b0: b0 / a0, b1: b1 / a0, b2: b2 / a0, a1: a1 / a0, a2: a2 / a0 };
+}
+function bilinearSec(s) {
+  var w = 2 * Math.PI * s.f / FS, cw = Math.cos(w), sw = Math.sin(w);
+  var al = sw / (2 * s.q), A, t, K, n;
+  switch (s.k) {
+    case "peak":
+      A = Math.pow(10, s.g / 40);
+      return norm(1 + al * A, -2 * cw, 1 - al * A, 1 + al / A, -2 * cw, 1 - al / A);
+    case "ls":
+      A = Math.pow(10, s.g / 40); t = 2 * Math.sqrt(A) * al;
+      return norm(A * ((A + 1) - (A - 1) * cw + t), 2 * A * ((A - 1) - (A + 1) * cw),
+                  A * ((A + 1) - (A - 1) * cw - t), (A + 1) + (A - 1) * cw + t,
+                  -2 * ((A - 1) + (A + 1) * cw), (A + 1) + (A - 1) * cw - t);
+    case "hs":
+      A = Math.pow(10, s.g / 40); t = 2 * Math.sqrt(A) * al;
+      return norm(A * ((A + 1) + (A - 1) * cw + t), -2 * A * ((A - 1) + (A + 1) * cw),
+                  A * ((A + 1) + (A - 1) * cw - t), (A + 1) - (A - 1) * cw + t,
+                  2 * ((A - 1) - (A + 1) * cw), (A + 1) - (A - 1) * cw - t);
+    case "hp2":   return norm((1 + cw) / 2, -(1 + cw), (1 + cw) / 2, 1 + al, -2 * cw, 1 - al);
+    case "lp2":   return norm((1 - cw) / 2, 1 - cw, (1 - cw) / 2, 1 + al, -2 * cw, 1 - al);
+    case "notch": return norm(1, -2 * cw, 1, 1 + al, -2 * cw, 1 - al);
+    case "bp":    return norm(al, 0, -al, 1 + al, -2 * cw, 1 - al);
+    case "hp1":
+      K = Math.tan(Math.PI * s.f / FS); n = 1 / (1 + K);
+      return { b0: n, b1: -n, b2: 0, a1: (K - 1) * n, a2: 0 };
+    case "lp1":
+      K = Math.tan(Math.PI * s.f / FS); n = 1 / (1 + K);
+      return { b0: K * n, b1: K * n, b2: 0, a1: (K - 1) * n, a2: 0 };
+  }
+  return { b0: 1, b1: 0, b2: 0, a1: 0, a2: 0 };
+}
+
+/* ---------- NATURAL: magnitude-matched realisation ---------------
+   Poles are the analogue poles mapped by impulse invariance; the
+   numerator is then solved so |H| equals the analogue magnitude at DC,
+   at Nyquist and at the band centre. Squared magnitudes are linear in
+   B0 = (b0+b1+b2)^2, B1 = (b0-b1+b2)^2, B2 = -4 b0 b2, which makes the
+   three-point match a direct solve.                                    */
+var POLE_LIMIT = 0.97 * Math.PI;
+
+function invertSec(c) {
+  return { b0: 1 / c.b0, b1: c.a1 / c.b0, b2: c.a2 / c.b0, a1: c.b1 / c.b0, a2: c.b2 / c.b0 };
+}
+function matchedSec(s) {
+  /* a cut is the exact inverse of the matching boost for these prototypes;
+     designing the boost and inverting it keeps the centre gain exact where
+     a direct solve would have no realisable numerator                    */
+  if ((s.k === "peak" || s.k === "ls" || s.k === "hs") && s.g < 0) {
+    return invertSec(matchedSec({ k: s.k, f: s.f, g: -s.g, q: s.q }));
+  }
+  var w0 = 2 * Math.PI * s.f / FS;
+  var T0 = analogMag2(s, 0), Tn = analogMag2(s, Math.PI / w0), Tc = analogMag2(s, 1);
+
+  if (s.k === "hp1" || s.k === "lp1") {
+    var p = -Math.exp(-Math.min(w0, POLE_LIMIT));
+    var sum = Math.sqrt(T0) * (1 + p), dif = Math.sqrt(Tn) * (1 - p);
+    return { b0: (sum + dif) / 2, b1: (sum - dif) / 2, b2: 0, a1: p, a2: 0 };
+  }
+
+  var wp = w0, Qp = s.q, A;
+  if (s.k === "peak") { A = Math.pow(10, s.g / 40); Qp = A * s.q; }
+  else if (s.k === "ls") { A = Math.pow(10, s.g / 40); wp = w0 / Math.sqrt(A); }
+  else if (s.k === "hs") { A = Math.pow(10, s.g / 40); wp = w0 * Math.sqrt(A); }
+  wp = Math.min(wp, POLE_LIMIT);
+
+  var z = 1 / (2 * Qp), e = Math.exp(-z * wp), a1;
+  a1 = z <= 1 ? -2 * e * Math.cos(wp * Math.sqrt(1 - z * z))
+              : -2 * e * Math.cosh(wp * Math.sqrt(z * z - 1));
+  var a2 = e * e;
+
+  var A0 = (1 + a1 + a2) * (1 + a1 + a2), A1 = (1 - a1 + a2) * (1 - a1 + a2), A2 = -4 * a2;
+  var p1 = Math.sin(w0 / 2); p1 *= p1;
+  var p0 = 1 - p1, p2 = 4 * p0 * p1;
+
+  /* a 2nd-order high-pass needs its double zero at DC, or the slope decays
+     toward 6 dB/oct far below the corner: fix the numerator's shape to
+     K(1 - z^-1)^2 and scale it to hit the analogue gain at the corner  */
+  if (s.k === "hp2") {
+    var K = Math.sqrt(Tc * (A0 * p0 + A1 * p1 + A2 * p2)) / (4 * p1);
+    return { b0: K, b1: -2 * K, b2: K, a1: a1, a2: a2 };
+  }
+
+  var B0 = T0 * A0, B1 = Tn * A1;
+  var B2 = (Tc * (A0 * p0 + A1 * p1 + A2 * p2) - B0 * p0 - B1 * p1) / p2;
+
+  var r0 = Math.sqrt(B0), r1 = Math.sqrt(B1);
+  var W = (r0 + r1) / 2, b1 = (r0 - r1) / 2;
+  var disc = W * W + B2;
+  var gainKind = s.k === "peak" || s.k === "ls" || s.k === "hs";
+
+  /* An exact boost keeps its zeros well inside the unit circle. Where the pole
+     had to be clamped below Nyquist (a steep high shelf near the top at
+     44.1/48 kHz) the solve cannot deliver that: its zeros land on the unit
+     circle, and the inverted cut would be unstable. The matched design is
+     not realisable there, so that one section falls back to bilinear —
+     stable, and still exact at the band centre.                        */
+  if (gainKind && disc < 0) return bilinearSec(s);
+  disc = Math.max(0, disc);
+  var b0 = (W + Math.sqrt(disc)) / 2, b2 = W - b0;
+  /* zeros may legitimately sit outside the poles (a high-shelf boost's
+     numerator corner is below its denominator's) but never at the circle */
+  if (gainKind && b2 / b0 > Math.max(a2, 0.999)) return bilinearSec(s);
+  return { b0: b0, b1: b1, b2: b2, a1: a1, a2: a2 };
+}
+
+/* ---------- realise + evaluate ----------------------------------- */
+function realiseBand(band, gainDb) {
+  var secs = bandSections(band, gainDb);
+  if (ST.phase === "linear") return { analog: true, secs: secs };
+  var out = [];
+  for (var i = 0; i < secs.length; i++) {
+    out.push(ST.phase === "natural" ? matchedSec(secs[i]) : bilinearSec(secs[i]));
+  }
+  return { analog: false, secs: out };
 }
 function cascadeDb(sections, c1, s1, c2, s2) {
   var db = 0;
@@ -125,8 +241,21 @@ function cascadeDb(sections, c1, s1, c2, s2) {
   }
   return db;
 }
+function analogDb(secs, f) {
+  var db = 0;
+  for (var i = 0; i < secs.length; i++) db += 10 * Math.log10(analogMag2(secs[i], f / secs[i].f) + 1e-30);
+  return db;
+}
+/* response of one realised band at one frequency (above Nyquist the
+   digital response is undefined, so it is held at its Nyquist value) */
+function realisedDbAt(rb, f) {
+  var fe = Math.min(f, NYQ * 0.9995);
+  if (rb.analog) return analogDb(rb.secs, fe);
+  var w = 2 * Math.PI * fe / FS;
+  return cascadeDb(rb.secs, Math.cos(w), Math.sin(w), Math.cos(2 * w), Math.sin(2 * w));
+}
 
-/* ---------- state --------------------------------------------- */
+/* ---------- presets ----------------------------------------------- */
 function mkBand(type, freq, gain, q, extra) {
   var b = {
     type: type, freq: freq, gain: gain, q: q, slope: 12, on: true,
@@ -135,20 +264,23 @@ function mkBand(type, freq, gain, q, extra) {
   if (extra) for (var k in extra) b[k] = extra[k];
   return b;
 }
+function dyn(range, threshold, attack, release) {
+  return { dyn: { on: true, range: range, threshold: threshold, attack: attack, release: release, cur: 0 } };
+}
 
 var PRESETS = [
   { name: "Master Clean", tag: "PRECISION · MUSICAL · NATURAL", bands: [
-    mkBand("lowcut", 36, 0, 0.71, { slope: 12 }),
-    mkBand("bell", 104, 6.4, 0.9),
-    mkBand("bell", 512, -4.8, 2.4, { dyn: { on: true, range: -6, threshold: -24, attack: 10, release: 120, cur: 0 } }),
-    mkBand("bell", 3800, 6.2, 0.85),
-    mkBand("bell", 15000, 4.4, 0.8)
+    mkBand("lowcut", 38, 0, 0.71, { slope: 12 }),
+    mkBand("bell", 101, 5.9, 0.8),
+    mkBand("bell", 512, -4.8, 2.4, dyn(-6, -24, 10, 120)),
+    mkBand("bell", 3400, 9.2, 0.7),
+    mkBand("highshelf", 17000, 7.0, 0.6)
   ]},
   { name: "Vocal Presence", tag: "FORWARD · CLEAR · INTIMATE", bands: [
     mkBand("lowcut", 92, 0, 0.71, { slope: 24 }),
     mkBand("bell", 268, -3.4, 1.6),
     mkBand("bell", 2900, 4.6, 1.1),
-    mkBand("bell", 6400, -4.2, 5.5, { dyn: { on: true, range: -5, threshold: -22, attack: 3, release: 80, cur: 0 } }),
+    mkBand("bell", 6400, -4.2, 5.5, dyn(-5, -30, 3, 80)),
     mkBand("highshelf", 10500, 3.8, 0.7)
   ]},
   { name: "Drum Punch", tag: "TIGHT · PUNCHY · OPEN", bands: [
@@ -161,7 +293,7 @@ var PRESETS = [
   { name: "Bass Control", tag: "DEEP · CONTROLLED · SOLID", bands: [
     mkBand("lowcut", 30, 0, 0.71, { slope: 36 }),
     mkBand("bell", 82, 4.0, 1.1),
-    mkBand("bell", 180, -5.5, 2.2, { dyn: { on: true, range: -8, threshold: -20, attack: 14, release: 180, cur: 0 } }),
+    mkBand("bell", 180, -5.5, 2.2, dyn(-8, -20, 14, 180)),
     mkBand("bell", 900, 2.6, 1.4),
     mkBand("highcut", 12000, 0, 0.71, { slope: 12 })
   ]},
@@ -169,6 +301,11 @@ var PRESETS = [
     mkBand("bell", 340, -2.4, 1.4),
     mkBand("highshelf", 7800, 4.4, 0.6),
     mkBand("bell", 15500, 3.8, 0.9)
+  ]},
+  { name: "Quiet Lift", tag: "UPWARD · GENTLE · DETAIL", bands: [
+    mkBand("lowcut", 40, 0, 0.71, { slope: 18 }),
+    mkBand("bell", 2600, 0, 0.8, dyn(4, -34, 20, 250)),
+    mkBand("highshelf", 9500, 0, 0.7, dyn(3, -40, 30, 300))
   ]},
   { name: "Surgical Repair", tag: "NARROW · SURGICAL · EXACT", bands: [
     mkBand("notch", 60, 0, 30),
@@ -178,38 +315,77 @@ var PRESETS = [
   ]}
 ];
 
+/* ---------- state --------------------------------------------------
+   Sound state is what A/B and undo capture. View state (analyser
+   source, tab, display scale, settings) is deliberately excluded, as
+   the spec asks: A/B compares sound, not cosmetics.                  */
+var SOUND_KEYS = ["presetIndex", "bands", "selected", "phase", "mode", "input", "output"];
+
 var ST = {
   presetIndex: 0,
   bands: JSON.parse(JSON.stringify(PRESETS[0].bands)),
   selected: 2,
-  slot: "A",
-  analyzerOn: true,
-  analyzerMode: "pre",          /* pre | post | both */
-  tab: "eq",                    /* eq | dynamic | spectral */
   phase: "zero",
-  fineScale: 12,                /* right-hand ruler range, matches SCALE control */
   mode: "clean",
   input: 0,
   output: 0,
+  /* A/B */
+  slot: "A",
+  slots: { A: null, B: null },
+  /* view */
   solo: false,
-  power: true,
-  sidechain: false,
-  bypass: false
+  analyzerOn: true,
+  analyzerMode: "pre",
+  tab: "eq",
+  fineScale: 12,
+  /* settings */
+  sampleRate: 96000,
+  linearQuality: "high",
+  anaSpeed: "medium",
+  anaTilt: 0,
+  autoGain: false,
+  sidechain: false
 };
 function cur() { return ST; }
 function selBand() { return ST.bands[ST.selected]; }
 
-/* ---------- undo / redo (gestures grouped) --------------------- */
+function soundSnap() {
+  var o = {};
+  for (var i = 0; i < SOUND_KEYS.length; i++) o[SOUND_KEYS[i]] = ST[SOUND_KEYS[i]];
+  return JSON.parse(JSON.stringify(o));
+}
+function loadSound(o) {
+  for (var i = 0; i < SOUND_KEYS.length; i++) {
+    var k = SOUND_KEYS[i];
+    if (o[k] !== undefined) ST[k] = JSON.parse(JSON.stringify(o[k]));
+  }
+  ST.selected = clamp(ST.selected, 0, ST.bands.length - 1);
+}
+
+/* A/B: the slot being left keeps what you did to it; a slot never
+   visited starts as a copy of the other, so B begins where A is.     */
+function switchSlot(to) {
+  if (to === ST.slot) return;
+  commit(function () {
+    ST.slots[ST.slot] = soundSnap();
+    if (!ST.slots[to]) ST.slots[to] = soundSnap();
+    loadSound(ST.slots[to]);
+    ST.slot = to;
+  });
+  syncAll();
+}
+
+/* ---------- undo / redo (sound only, gestures grouped) --------- */
 var History = {
   past: [], future: [],
-  snap: function () { return JSON.stringify(ST); },
-  restore: function (s) {
-    var o = JSON.parse(s);
-    for (var k in o) ST[k] = o[k];
+  snap: function () { return JSON.stringify({ s: soundSnap(), slot: ST.slot, slots: ST.slots }); },
+  restore: function (str) {
+    var o = JSON.parse(str);
+    loadSound(o.s); ST.slot = o.slot; ST.slots = o.slots;
   },
   push: function (prev) {
     this.past.push(prev);
-    if (this.past.length > 120) this.past.shift();
+    if (this.past.length > 200) this.past.shift();
     this.future.length = 0;
   },
   undo: function () {
@@ -232,94 +408,196 @@ function commit(fn) {
   if (before !== History.snap()) History.push(before);
 }
 
-/* ---------- analyser model ------------------------------------- */
-var NBINS = 420;
+/* ---------- analyser model ---------------------------------------
+   There is no audio in a prototype, so the input is a synthesised
+   mix: a moving bass line, a chord, a lead with formants, drums and a
+   pink floor. Partials are spread by a fixed window width in Hz, as a
+   real 4096-point FFT spreads them — broad in the bass, needle-sharp
+   in the mids and highs. Everything downstream of this input (POST,
+   the dynamics detectors, auto gain) is computed truthfully from it.  */
+var NBINS = 1024;
 var binF = new Float64Array(NBINS);
 var binT = new Float64Array(NBINS);
 for (var _i = 0; _i < NBINS; _i++) {
   binT[_i] = _i / (NBINS - 1);
   binF[_i] = normToF(binT[_i]);
 }
+var specPow = new Float64Array(NBINS);
 var specRaw = new Float64Array(NBINS);
-var specDisp = new Float64Array(NBINS);
+var specDisp = new Float64Array(NBINS);   /* dBFS, before input gain */
 var specPeak = new Float64Array(NBINS);
 var texture = new Float64Array(NBINS);
 for (var _j = 0; _j < NBINS; _j++) { specDisp[_j] = -90; specPeak[_j] = -120; }
 
+var SPEEDS = { slow: [0.30, 0.020], medium: [0.55, 0.050], fast: [0.85, 0.120] };
+var BASS_LINE = [55, 55, 65.41, 49, 73.42, 61.74];
+var CHORDS = [[220, 261.6, 329.6], [196, 246.9, 293.7], [174.6, 220, 261.6], [196, 246.9, 311.1]];
+var LEAD = [587.3, 659.3, 523.3, 698.5, 587.3, 784];
 var T = 0;
+
+function addPartial(fp, levelDb, sigmaHz) {
+  if (fp <= FMIN || fp >= Math.min(FMAX, NYQ)) return;
+  var p = Math.pow(10, levelDb / 10);
+  var lo = fp - 4 * sigmaHz, hi = fp + 4 * sigmaHz;
+  var i0 = Math.max(0, Math.floor(fToNorm(Math.max(lo, FMIN)) * (NBINS - 1)));
+  var i1 = Math.min(NBINS - 1, Math.ceil(fToNorm(Math.min(hi, FMAX)) * (NBINS - 1)));
+  for (var i = i0; i <= i1; i++) {
+    var d = (binF[i] - fp) / sigmaHz;
+    specPow[i] += p * Math.exp(-0.5 * d * d);
+  }
+}
+function floorDb(f) {
+  /* the mix's broadband body: gently rising to 200 Hz, -3.3 dB/oct above
+     1 kHz, and a steep roll-off under 60 Hz — the shape of a mastered mix */
+  var v;
+  if (f >= 1000) v = -32.5 - 3.0 * Math.log2(f / 1000);
+  else v = -32.5 + 1.6 * Math.min(Math.log2(1000 / f), Math.log2(1000 / 200));
+  if (f < 70) v -= 12 * Math.log2(70 / f);
+  if (f > 16000) v -= 6 * Math.log2(f / 16000);
+  return v;
+}
+
 function updateSpectrum(dt) {
   T += dt;
-  var bassF = 58 * Math.pow(2, 0.42 * Math.sin(T * 0.27) + 0.22 * Math.sin(T * 0.63));
-  var midEnv = 0.62 + 0.38 * Math.sin(T * 0.41 + 1.2);
-  var hfEnv = 0.55 + 0.45 * Math.sin(T * 0.53 + 2.6);
-  var snare = Math.pow(Math.max(0, Math.sin(T * 2.1)), 6);
-  var i, f, v, amp;
+  var i, h;
+  for (i = 0; i < NBINS; i++) specPow[i] = Math.pow(10, floorDb(binF[i]) / 10);
 
+  var beat = T * 2.0;                               /* 120 bpm */
+  var bar = Math.floor(beat / 4);
+  var sigma = 7.5;                                  /* window width, Hz */
+
+  /* bass line, one note per beat */
+  var bf = BASS_LINE[Math.floor(beat) % BASS_LINE.length];
+  var bEnv = 0.55 + 0.45 * Math.exp(-3 * (beat % 1));
+  for (h = 1; h <= 24; h++) {
+    addPartial(bf * h, -30 - 6.5 * Math.log2(h) + 10 * Math.log10(bEnv) + (h === 2 ? 2 : 0), sigma);
+  }
+  /* chord, one per bar */
+  var ch = CHORDS[bar % CHORDS.length];
+  for (var c = 0; c < ch.length; c++) {
+    for (h = 1; h <= 28; h++) {
+      addPartial(ch[c] * h * (1 + 0.0007 * c), -24.5 - 5.0 * Math.log2(h), sigma);
+    }
+  }
+  /* lead with two formants, a note per half bar */
+  var lf = LEAD[Math.floor(beat / 2) % LEAD.length];
+  var vib = 1 + 0.004 * Math.sin(T * 34);
+  for (h = 1; h <= 30; h++) {
+    var fh = lf * h * vib;
+    var form = 9 * Math.exp(-Math.pow(Math.log2(fh / 1300) / 0.35, 2)) +
+               6 * Math.exp(-Math.pow(Math.log2(fh / 2900) / 0.3, 2));
+    addPartial(fh, -33.5 - 4.2 * Math.log2(h) + form, sigma);
+  }
+  /* kick and snare */
+  var kick = Math.exp(-9 * (beat % 1));
+  var snare = Math.exp(-7 * ((beat + 1) % 2));
   for (i = 0; i < NBINS; i++) {
-    f = binF[i];
-    v = -13 - 11.5 * Math.log10(Math.max(f, 20) / 42);
-    v += 17 * Math.exp(-Math.pow(Math.log(f / bassF) / Math.LN2 / 0.5, 2));
-    v += 10 * Math.exp(-Math.pow(Math.log(f / (bassF * 2)) / Math.LN2 / 0.45, 2));
-    v += 6 * Math.exp(-Math.pow(Math.log(f / (bassF * 3)) / Math.LN2 / 0.42, 2));
-    v += 8 * midEnv * Math.exp(-Math.pow(Math.log(f / 620) / Math.LN2 / 1.15, 2));
-    v += 7 * hfEnv * Math.exp(-Math.pow(Math.log(f / 3600) / Math.LN2 / 1.05, 2));
-    v += 9 * snare * Math.exp(-Math.pow(Math.log(f / 1900) / Math.LN2 / 1.4, 2));
-    amp = 2.4 + 3.6 * Math.min(1, f / 2500);
-    texture[i] += ((Math.random() * 2 - 1) * amp - texture[i]) * 0.34;
-    specRaw[i] = v + texture[i];
+    var f = binF[i];
+    var k = kick * Math.exp(-Math.pow(Math.log2(f / 58) / 0.55, 2)) * Math.pow(10, -27 / 10);
+    var sn = snare * (Math.exp(-Math.pow(Math.log2(f / 220) / 0.4, 2)) * 0.5 +
+                      Math.exp(-Math.pow(Math.log2(f / 5000) / 1.1, 2)) * 0.35) * Math.pow(10, -30 / 10);
+    /* the snare's boxy body around 500 Hz — what the preset's dynamic cut
+       at 512 Hz is there to tame, so it ducks on the backbeat            */
+    sn += snare * Math.exp(-Math.pow(Math.log2(f / 520) / 0.45, 2)) * Math.pow(10, -17 / 10);
+    specPow[i] += k + sn;
   }
-  for (i = 1; i < NBINS - 1; i++) {
-    specRaw[i] = specRaw[i] * 0.5 + specRaw[i - 1] * 0.25 + specRaw[i + 1] * 0.25;
+
+  /* per-bin variance, as a real FFT frame has: magnitudes of noisy bins are
+     Rayleigh-like, so the spikes point up. Noisier toward the top.        */
+  for (i = 0; i < NBINS; i++) {
+    var amp = 2.0 + 3.2 * Math.min(1, binF[i] / 2500);
+    var spike = (-Math.log(1 - Math.random() * 0.9999) - 1) * amp * 1.25;
+    texture[i] += (spike - texture[i]) * 0.6;
+    specRaw[i] = 10 * Math.log10(specPow[i] + 1e-14) + texture[i];
   }
+
+  var sp = SPEEDS[ST.anaSpeed] || SPEEDS.medium;
   for (i = 0; i < NBINS; i++) {
     var t = specRaw[i];
-    specDisp[i] += (t - specDisp[i]) * (t > specDisp[i] ? 0.52 : 0.045);
-    specPeak[i] = Math.max(specPeak[i] - 26 * dt, specDisp[i]);
+    specDisp[i] += (t - specDisp[i]) * (t > specDisp[i] ? sp[0] : sp[1]);
+    specPeak[i] = Math.max(specPeak[i] - 20 * dt, specDisp[i]);
   }
 }
 
+/* analyser display tilt: dB added at f, pivoting at 1 kHz */
+function anaTiltAt(f) { return ST.anaTilt * Math.log2(f / 1000); }
+
+/* ---------- dynamics ------------------------------------------------
+   Detector: energy of the input (after the input trim) weighted by a
+   window matched to the band's own bandwidth — one detector per band,
+   never a shared broadband one. Gain computer: 2:1 with a 6 dB soft
+   knee. Direction follows the sign of RANGE, as the spec defines it:
+     negative  DOWNWARD — attenuate when the band gets LOUDER than threshold
+     positive  UPWARD   — boost when the band falls QUIETER than threshold
+   Movement never exceeds |RANGE|; that is enforced here, not by drawing. */
+var DYN_RATIO = 2, DYN_KNEE = 6;
+
+function bandwidthOct(band) {
+  if (band.type === "bell" || band.type === "notch" || band.type === "bandpass") {
+    var q = Math.max(band.q, 0.1);
+    return (2 / Math.LN2) * Math.asinh(1 / (2 * q));
+  }
+  return 1.5;
+}
 function detectorLevel(band) {
-  var bw = (band.type === "bell" || band.type === "notch" || band.type === "bandpass")
-    ? clamp(1 / Math.max(band.q, 0.2), 0.12, 2.2) : 1.0;
+  var bw = clamp(bandwidthOct(band) / 2, 0.08, 2.2);
   var sum = 0, wsum = 0;
   for (var i = 0; i < NBINS; i++) {
     var oct = Math.log(binF[i] / band.freq) / Math.LN2;
     var w = Math.exp(-Math.pow(oct / bw, 2));
     if (w < 0.02) continue;
-    sum += Math.pow(10, specDisp[i] / 10) * w;
+    sum += Math.pow(10, specRaw[i] / 10) * w;
     wsum += w;
   }
-  return 10 * Math.log10(sum / Math.max(wsum, 1e-9) + 1e-12);
+  /* reads the raw frame, not the analyser's display ballistics: the band
+     has its own attack and release, and must not inherit the display's.
+     A power mean over the window. The analyser's bins are log-spaced, so a
+     plain sum would scale with how many bins the window spans rather than
+     with the band's bandwidth — which pinned wide bands at full range.    */
+  return 10 * Math.log10(sum / Math.max(wsum, 1e-9) + 1e-14) + ST.input;
+}
+function softKnee(o) {
+  if (o <= -DYN_KNEE / 2) return 0;
+  if (o >= DYN_KNEE / 2) return o;
+  return (o + DYN_KNEE / 2) * (o + DYN_KNEE / 2) / (2 * DYN_KNEE);
+}
+function dynamicTarget(band, det) {
+  var r = band.dyn.range, k = 1 - 1 / DYN_RATIO;
+  if (r < 0) return -Math.min(softKnee(det - band.dyn.threshold) * k, -r);
+  if (r > 0) return Math.min(softKnee(band.dyn.threshold - det) * k, r);
+  return 0;
 }
 function updateDynamics(dt) {
   for (var i = 0; i < ST.bands.length; i++) {
     var b = ST.bands[i];
-    if (!b.dyn.on || !b.on || ST.bypass) { b.dyn.cur *= 0.85; continue; }
-    var over = detectorLevel(b) - b.dyn.threshold;
-    var amount = over > 0 ? clamp(over / 2.5 / Math.max(Math.abs(b.dyn.range), 0.001), 0, 1) : 0;
-    var target = b.dyn.range * amount;
-    var moving = Math.abs(target) > Math.abs(b.dyn.cur);
-    var tau = (moving ? b.dyn.attack : b.dyn.release) / 1000;
-    b.dyn.cur += (target - b.dyn.cur) * clamp(1 - Math.exp(-dt / Math.max(tau, 0.0005)), 0, 1);
+    if (!b.dyn.on || !b.on) { b.dyn.cur *= 0.85; continue; }
+    b.dyn.det = detectorLevel(b);
+    var target = dynamicTarget(b, b.dyn.det);
+    var engaging = Math.abs(target) > Math.abs(b.dyn.cur);
+    var tau = (engaging ? b.dyn.attack : b.dyn.release) / 1000;
+    b.dyn.cur += (target - b.dyn.cur) * clamp(1 - Math.exp(-dt / Math.max(tau, 0.0001)), 0, 1);
   }
 }
 
-/* ---------- canvas geometry ------------------------------------ */
+/* ---------- canvas geometry ------------------------------------- */
 var cv, ctx, CW = 0, CH = 0, DPR = 1;
-var PAD = { l: 46, r: 46, t: 52, b: 26 };   /* t clears the floating toolbar */
+var PAD = { l: 52, r: 54, t: 66, b: 34 };
+
+/* the EQ is plotted on the right-hand ruler. Its +/-scale ticks sit at
+   three quarters of the half-height, which is where the reference puts
+   them — and where a -4.8 dB band reads -4.8 on that ruler.           */
+function eqHalf() { return ST.fineScale * 4 / 3; }
+
 function plot() {
   return { x: PAD.l, y: PAD.t, w: Math.max(10, CW - PAD.l - PAD.r), h: Math.max(10, CH - PAD.t - PAD.b) };
 }
 function xOfF(f) { var p = plot(); return p.x + fToNorm(f) * p.w; }
 function fOfX(x) { var p = plot(); return normToF(clamp((x - p.x) / p.w, 0, 1)); }
-function yOfDb(db) { var p = plot(); return p.y + p.h * (GAIN_RANGE - db) / (2 * GAIN_RANGE); }
-function dbOfY(y) { var p = plot(); return GAIN_RANGE - ((y - p.y) / p.h) * 2 * GAIN_RANGE; }
-/* right-hand fine ruler: the SCALE control picks its range, and it is a
-   gain ruler, not a level meter — exactly as the reference draws it */
-function yOfFs(v) { return yOfDb(v * (GAIN_RANGE / ST.fineScale)); }
-/* analyser magnitudes get their own mapping across the plot */
-var A_TOP = 26, A_BOT = -74;
-function yOfLevel(dbfs) { var p = plot(); return p.y + p.h * (A_TOP - dbfs) / (A_TOP - A_BOT); }
+function yOfDb(db) { var p = plot(), H = eqHalf(); return p.y + p.h * (H - db) / (2 * H); }
+function dbOfY(y) { var p = plot(), H = eqHalf(); return H - ((y - p.y) / p.h) * 2 * H; }
+/* left ruler: analyser dB (0 = ANA_REF dBFS) */
+function yOfAna(v) { var p = plot(); return p.y + p.h * (ANA_RANGE - v) / (2 * ANA_RANGE); }
+function yOfLevel(dbfs) { return yOfAna(dbfs - ANA_REF); }
 
 function resizeCanvas() {
   var r = cv.getBoundingClientRect();
@@ -331,38 +609,60 @@ function resizeCanvas() {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 }
 
-/* ---------- response ------------------------------------------- */
+/* ---------- response ---------------------------------------------
+   respLive    every band, dynamics as they are this frame
+   respStatic  every band at rest
+   respRange   dynamic bands pushed to their limit
+   respBase    only the line-drawn types (cuts, notch, band pass): the
+               tonal fill is painted between this and respLive, so a
+               cut is shown by its line and never floods the plot     */
 var respLive = new Float64Array(0), respStatic = new Float64Array(0),
-    respRange = new Float64Array(0), respW = 0;
+    respRange = new Float64Array(0), respBase = new Float64Array(0),
+    respW = 0, colF = new Float64Array(0), colTrig = null;
+
+function allocResp(width) {
+  respLive = new Float64Array(width); respStatic = new Float64Array(width);
+  respRange = new Float64Array(width); respBase = new Float64Array(width);
+  colF = new Float64Array(width);
+  respW = width; colTrig = null;
+}
+function buildTrig() {
+  colTrig = { fs: FS, c1: new Float64Array(respW), s1: new Float64Array(respW),
+              c2: new Float64Array(respW), s2: new Float64Array(respW) };
+  for (var x = 0; x < respW; x++) {
+    colF[x] = normToF(x / (respW - 1));
+    var w = 2 * Math.PI * Math.min(colF[x], NYQ * 0.9995) / FS;
+    colTrig.c1[x] = Math.cos(w); colTrig.s1[x] = Math.sin(w);
+    colTrig.c2[x] = Math.cos(2 * w); colTrig.s2[x] = Math.sin(2 * w);
+  }
+}
+function evalInto(rb, arr, x) {
+  if (rb.analog) return analogDb(rb.secs, Math.min(colF[x], NYQ * 0.9995));
+  return cascadeDb(rb.secs, colTrig.c1[x], colTrig.s1[x], colTrig.c2[x], colTrig.s2[x]);
+}
 
 function computeResponses(width) {
-  if (respW !== width) {
-    respLive = new Float64Array(width);
-    respStatic = new Float64Array(width);
-    respRange = new Float64Array(width);
-    respW = width;
-  }
-  respLive.fill(0); respStatic.fill(0); respRange.fill(0);
-  if (ST.bypass || !ST.power) return;
+  if (respW !== width) allocResp(width);
+  if (!colTrig || colTrig.fs !== FS) buildTrig();
+  respLive.fill(0); respStatic.fill(0); respRange.fill(0); respBase.fill(0);
 
-  var sel = ST.bands[ST.selected];
   for (var bi = 0; bi < ST.bands.length; bi++) {
     var band = ST.bands[bi];
     if (!band.on) continue;
-    if (ST.solo && band !== sel) continue;
     var g = TYPES[band.type].gain ? band.gain : 0;
-    var sS = designBand(band, g);
-    var sL = band.dyn.on ? designBand(band, g + band.dyn.cur) : sS;
-    var sR = band.dyn.on ? designBand(band, g + band.dyn.range) : sS;
+    var rS = realiseBand(band, g);
+    var dynamic = band.dyn.on;
+    var rL = dynamic ? realiseBand(band, g + band.dyn.cur) : rS;
+    var rR = dynamic ? realiseBand(band, g + band.dyn.range) : rS;
+    var isBase = !!BASELINE_TYPES[band.type];
 
     for (var x = 0; x < width; x++) {
-      var f = normToF(x / (width - 1));
-      var w = Math.min(2 * Math.PI * f / FS, Math.PI * 0.9995);
-      var c1 = Math.cos(w), s1 = Math.sin(w), c2 = Math.cos(2 * w), s2 = Math.sin(2 * w);
-      var dS = cascadeDb(sS, c1, s1, c2, s2);
+      var dS = evalInto(rS, respStatic, x);
+      var dL = rL === rS ? dS : evalInto(rL, respLive, x);
       respStatic[x] += dS;
-      respLive[x] += (sL === sS) ? dS : cascadeDb(sL, c1, s1, c2, s2);
-      respRange[x] += (sR === sS) ? dS : cascadeDb(sR, c1, s1, c2, s2);
+      respLive[x] += dL;
+      respRange[x] += rR === rS ? dS : evalInto(rR, respRange, x);
+      if (isBase) respBase[x] += dL;
     }
   }
 }
@@ -371,33 +671,79 @@ function respAtF(f) {
   return respLive[clamp(Math.round(fToNorm(f) * (respW - 1)), 0, respW - 1)];
 }
 
-/* ---------- formatting ----------------------------------------- */
+/* the whole EQ at one frequency, evaluated exactly (not pixel-sampled) */
+function compositeDbAt(f) {
+  var db = 0;
+  for (var i = 0; i < ST.bands.length; i++) {
+    var b = ST.bands[i];
+    if (!b.on) continue;
+    var g = TYPES[b.type].gain ? b.gain + (b.dyn.on ? b.dyn.cur : 0) : 0;
+    db += realisedDbAt(realiseBand(b, g), f);
+  }
+  return db;
+}
+/* where a band's node sits: on the composite curve at the band's centre,
+   as the reference draws every node. Dragging is relative, so a node
+   propped up by a neighbour still moves by exactly what you drag. A
+   notch rides the 0 dB line, where its depth would put it off-plot.  */
+function nodeGainDb(band) {
+  if (band.type === "notch") return 0;
+  return compositeDbAt(band.freq);
+}
+/* how much the node moves per dB of gain — used to make dragging relative */
+function nodeGainSlope(type) {
+  return type === "bell" ? 1 : (type === "lowshelf" || type === "highshelf") ? 0.5 : 1;
+}
+
+/* auto gain: minus the EQ's mean change over log frequency, 20 Hz-20 kHz.
+   A broadband energy estimate — explicitly not the largest boost negated. */
+function autoGainDb() {
+  if (!ST.autoGain || !respW) return 0;
+  var sum = 0, n = 0;
+  for (var x = 0; x < respW; x++) {
+    if (colF[x] < 20 || colF[x] > 20000) continue;
+    sum += respLive[x]; n++;
+  }
+  return n ? -sum / n : 0;
+}
+
+/* linear-phase latency: half the FIR length, in samples */
+/* FIR length at 48 kHz; scaled with the rate so each quality keeps the
+   same low-frequency resolution in Hz */
+var LINEAR_TAPS = { low: 1024, medium: 2048, high: 4096, max: 8192 };
+function latencySamples() {
+  if (ST.phase !== "linear") return 0;
+  return (LINEAR_TAPS[ST.linearQuality] || 4096) / 2 * (FS / 48000);
+}
+
+/* ---------- formatting ------------------------------------------- */
 function fmtFreq(f) {
   if (f >= 10000) return (f / 1000).toFixed(1) + " kHz";
   if (f >= 1000) return (f / 1000).toFixed(2) + " kHz";
   return f.toFixed(f < 100 ? 1 : 0) + " Hz";
 }
-function fmtDb(v) { return (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(1) + " dB"; }
+function fmtDb(v) {
+  if (Math.abs(v) < 0.05) v = 0;
+  return (v < 0 ? "−" : v > 0 ? "+" : "") + Math.abs(v).toFixed(1) + " dB";
+}
+function fmtQ(v) { return v < 10 ? v.toFixed(2) : v.toFixed(1); }
 
-/* ---------- canvas interaction --------------------------------- */
+/* ---------- canvas interaction ----------------------------------- */
 var hover = { x: -1, y: -1, inside: false, node: -1 };
 var drag = null;
 
-function nodeY(band) {
-  var g = TYPES[band.type].gain ? band.gain + (band.dyn.on ? band.dyn.cur : 0) : 0;
-  return yOfDb(g);
-}
+function nodeY(band) { return yOfDb(nodeGainDb(band)); }
 function localPt(e) {
   var r = cv.getBoundingClientRect();
   return { x: e.clientX - r.left, y: e.clientY - r.top };
 }
 function hitNode(pt) {
-  var best = -1, bestD = 18 * 18;
+  var best = -1, bestD = 16 * 16;
   for (var i = 0; i < ST.bands.length; i++) {
     var b = ST.bands[i];
     var dx = xOfF(b.freq) - pt.x, dy = nodeY(b) - pt.y;
     var d = dx * dx + dy * dy;
-    if (d < bestD) { bestD = d; best = i; }
+    if (d <= bestD) { bestD = d; best = i; }
   }
   return best;
 }
@@ -409,8 +755,12 @@ function bindCanvas() {
     hover.inside = pt.x >= p.x && pt.x <= p.x + p.w && pt.y >= p.y && pt.y <= p.y + p.h;
     if (drag) {
       var b = ST.bands[drag.i], fine = e.shiftKey ? 0.22 : 1;
-      b.freq = clamp(fOfX(drag.sx + (pt.x - drag.px) * fine), FMIN + 2, 30000);
-      if (TYPES[b.type].gain) b.gain = clamp(dbOfY(drag.sy + (pt.y - drag.py) * fine), -24, 24);
+      /* relative in both axes, so grabbing a node never makes it jump */
+      b.freq = clamp(fOfX(drag.sx + (pt.x - drag.px) * fine), BAND_FMIN, BAND_FMAX);
+      if (TYPES[b.type].gain) {
+        var dDb = (dbOfY(drag.py + (pt.y - drag.py) * fine) - dbOfY(drag.py)) / nodeGainSlope(b.type);
+        b.gain = clamp(drag.g0 + dDb, -24, 24);
+      }
       syncBandControls();
       return;
     }
@@ -420,12 +770,13 @@ function bindCanvas() {
   cv.addEventListener("pointerleave", function () { hover.inside = false; hover.node = -1; });
 
   cv.addEventListener("pointerdown", function (e) {
+    if (e.button !== 0) return;
     var pt = localPt(e), i = hitNode(pt);
     if (i < 0) return;
     if (e.altKey) { commit(function () { ST.bands[i].on = !ST.bands[i].on; }); syncAll(); return; }
     beginGesture();
     ST.selected = i;
-    drag = { i: i, px: pt.x, py: pt.y, sx: xOfF(ST.bands[i].freq), sy: nodeY(ST.bands[i]) };
+    drag = { i: i, px: pt.x, py: pt.y, sx: xOfF(ST.bands[i].freq), g0: ST.bands[i].gain };
     cv.setPointerCapture(e.pointerId);
     cv.style.cursor = "grabbing";
     syncAll();
@@ -438,25 +789,41 @@ function bindCanvas() {
     var i = hover.node >= 0 ? hover.node : hitNode(localPt(e));
     if (i < 0) return;
     var b = ST.bands[i];
-    if (!TYPES[b.type].q) return;
     e.preventDefault();
     beginGesture();
     ST.selected = i;
-    b.q = clamp(b.q * Math.exp(-e.deltaY * 0.0016 * (e.shiftKey ? 0.3 : 1)), 0.1, 100);
-    syncBandControls();
+    if (TYPES[b.type].q) {
+      b.q = clamp(b.q * Math.exp(-e.deltaY * 0.0016 * (e.shiftKey ? 0.3 : 1)), 0.1, 100);
+    } else if (TYPES[b.type].slope) {
+      /* on a cut, the wheel steps the slope instead */
+      cv._acc = (cv._acc || 0) + e.deltaY;
+      if (Math.abs(cv._acc) > 60) {
+        var si = SLOPES.indexOf(b.slope);
+        b.slope = SLOPES[clamp(si + (cv._acc < 0 ? 1 : -1), 0, SLOPES.length - 1)];
+        cv._acc = 0;
+      }
+    }
+    syncAll();
     clearTimeout(cv._wt);
     cv._wt = setTimeout(endGesture, 350);
   }, { passive: false });
 
   cv.addEventListener("dblclick", function (e) {
     var pt = localPt(e), p = plot();
-    if (hitNode(pt) >= 0 || pt.x < p.x || pt.x > p.x + p.w) return;
+    var hit = hitNode(pt);
+    if (hit >= 0) {                     /* double-click a node: bypass it */
+      commit(function () { ST.bands[hit].on = !ST.bands[hit].on; });
+      syncAll();
+      return;
+    }
+    if (pt.x < p.x || pt.x > p.x + p.w) return;
     if (ST.bands.length >= 24) return;
     commit(function () {
-      var f = Math.round(fOfX(pt.x));
-      ST.bands.push(mkBand("bell", f, +clamp(dbOfY(pt.y), -24, 24).toFixed(1), 1.0));
+      var f = Math.round(clamp(fOfX(pt.x), BAND_FMIN, BAND_FMAX));
+      var nb = mkBand("bell", f, +clamp(dbOfY(pt.y), -24, 24).toFixed(1), 1.0);
+      ST.bands.push(nb);
       ST.bands.sort(function (a, b) { return a.freq - b.freq; });
-      for (var i = 0; i < ST.bands.length; i++) if (ST.bands[i].freq === f) { ST.selected = i; break; }
+      ST.selected = ST.bands.indexOf(nb);
     });
     syncAll();
   });
@@ -472,10 +839,14 @@ function bindCanvas() {
     var tag = (e.target.tagName || "").toLowerCase();
     if (tag === "input" || tag === "select" || tag === "textarea") return;
     var k = e.key.toLowerCase();
+    if (e.key === "Escape") { closeSettings(); return; }
+    if (e.target.closest && e.target.closest(".sh-knob-dial")) return;   /* knobs own their arrows */
     if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); removeBand(ST.selected); }
     else if ((e.metaKey || e.ctrlKey) && k === "z") { e.preventDefault(); e.shiftKey ? History.redo() : History.undo(); }
+    else if ((e.metaKey || e.ctrlKey) && k === "y") { e.preventDefault(); History.redo(); }
     else if (e.key === "[") { ST.selected = (ST.selected - 1 + ST.bands.length) % ST.bands.length; syncAll(); }
     else if (e.key === "]") { ST.selected = (ST.selected + 1) % ST.bands.length; syncAll(); }
+    else if (k === "s" && !e.metaKey && !e.ctrlKey) { ST.solo = !ST.solo; syncAll(); }
   });
 }
 function removeBand(i) {
@@ -491,12 +862,13 @@ function loadPreset(i) {
   commit(function () {
     ST.presetIndex = ((i % PRESETS.length) + PRESETS.length) % PRESETS.length;
     ST.bands = JSON.parse(JSON.stringify(PRESETS[ST.presetIndex].bands));
-    ST.selected = Math.min(ST.selected, ST.bands.length - 1);
+    var d = ST.bands.findIndex(function (b) { return b.dyn.on; });
+    ST.selected = d >= 0 ? d : Math.min(ST.selected, ST.bands.length - 1);
   });
   syncAll();
 }
 
-/* ---------- frame loop ----------------------------------------- */
+/* ---------- frame loop ------------------------------------------- */
 var lastT = 0;
 var reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -504,7 +876,9 @@ function frame(now) {
   var dt = Math.min(0.05, (now - lastT) / 1000);
   lastT = now;
 
-  if (!reducedMotion && ST.analyzerOn) updateSpectrum(dt);
+  /* the analyser model is the "audio": it runs even with the display off,
+     because the dynamics detectors listen to it */
+  updateSpectrum(reducedMotion ? dt * 0.25 : dt);
   updateDynamics(dt);
 
   var p = plot();
@@ -516,32 +890,38 @@ function frame(now) {
     if (ST.analyzerMode === "pre" || ST.analyzerMode === "both") drawSpectrum(ctx, p);
     if (ST.analyzerMode === "post" || ST.analyzerMode === "both") drawSpectrumPost(ctx, p);
   }
-  /* the tabs change emphasis rather than hiding anything: SPECTRAL pushes
-     the curve back so the analyser reads, DYNAMIC does the reverse */
   ctx.save();
-  if (ST.tab === "spectral") ctx.globalAlpha = 0.35;
+  if (ST.tab === "spectral") ctx.globalAlpha = 0.32;
   drawResponse(ctx, p, ST.bands);
+  if (ST.solo) drawSoloMask(ctx, p, selBand());
   drawNodes(ctx, p, ST.bands, ST.selected, hover.node);
   ctx.restore();
-  if (hover.inside && !drag) {
+
+  if (drag || (hover.node >= 0 && hover.inside)) {
+    var ti = drag ? drag.i : hover.node;
+    drawNodeTag(ctx, p, ST.bands[ti], ti);
+  } else if (hover.inside) {
     var f = fOfX(hover.x);
     drawHoverGuide(ctx, p, hover.x, f, respAtF(f));
   }
   drawAxes(ctx, p);
 
+  if (typeof syncLive === "function") syncLive();
   requestAnimationFrame(frame);
 }
 
 function bootEngine() {
+  setSampleRate(ST.sampleRate);
   cv = document.getElementById("shape-graph");
   ctx = cv.getContext("2d");
   if (window.ResizeObserver) new ResizeObserver(resizeCanvas).observe(cv);
   else window.addEventListener("resize", resizeCanvas);
   resizeCanvas();
+  ST.slots.A = soundSnap();
   bindCanvas();
   buildControls();
   syncAll();
-  for (var i = 0; i < 45; i++) updateSpectrum(1 / 60);   /* settle before first paint */
+  for (var i = 0; i < 60; i++) { updateSpectrum(1 / 60); updateDynamics(1 / 60); }
   lastT = performance.now();
   requestAnimationFrame(frame);
 }
